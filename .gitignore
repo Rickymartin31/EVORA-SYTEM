@@ -1,0 +1,33 @@
+# Dependencies (install with: composer install)
+/vendor/
+/composer.phar
+
+# Users' uploaded files (IDs, documents, receipts, photos) — never in the repository.
+# The empty folders are kept with .gitkeep so the structure exists after a clone.
+/storage/uploads/*/*
+!/storage/uploads/*/.gitkeep
+
+# Logs and run-time status files
+/storage/logs/*
+!/storage/logs/.gitkeep
+*.log
+
+# Secrets and local settings (real values live in the secrets folder outside the project)
+/config/evora.ini
+*.local.ini
+.env
+.env.*
+
+# Database dumps and backups (migrations in database/ are kept)
+*.dump
+*.bak
+*.tar
+*.zip
+/backups/
+
+# Editor / OS files
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store

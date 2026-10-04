@@ -1,0 +1,14 @@
+# EVORA web access policy.
+# Only public/ (index.php, uploads_guard.php, assets/) is served to browsers.
+# Everything else in the project (config, core, modules, database, storage,
+# docs, scripts, vendor, README, composer files) is internal and denied.
+# Uploaded files are served only through public/uploads_guard.php, which checks
+# the signed-in user's permission.
+Options -Indexes
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

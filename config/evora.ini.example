@@ -1,0 +1,25 @@
+; EVORA settings — copy to  <secrets folder>/evora.ini  (NOT inside public_html).
+; The secrets folder is found automatically: "evora_secrets" next to the project folder
+; (hosting: /home/USER/evora_secrets) or two levels up (XAMPP: C:\xampp\evora_secrets),
+; or set the EVORA_SECRETS_DIR environment variable. Missing keys use the local XAMPP defaults.
+; Keep the real file private: never commit it, share it or paste it in chat.
+
+; local (XAMPP) or production (hosting). Production refuses to start with unsafe values
+; (placeholder QR_SECRET, empty DB_PASS, or an APP_URL that is not https).
+APP_ENV=production
+
+; Address of EVORA's public folder as visitors type it, no trailing slash.
+APP_URL=https://your-domain.example
+
+DB_HOST=localhost
+DB_NAME=
+DB_USER=
+DB_PASS=
+
+; Signs every QR code (64 random hex characters). Set it ONCE before the first real event —
+; changing it later makes every issued QR code and e-ticket invalid.
+QR_SECRET=
+
+; Automatic backups (outside public_html) and, only if needed, the mysqldump program.
+BACKUP_DIR=/home/USER/evora_backups
+MYSQLDUMP_PATH=
