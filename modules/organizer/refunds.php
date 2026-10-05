@@ -41,12 +41,16 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                     <td class="small"><?= e($r['event_name']) ?></td>
                     <td class="small"><?= $r['event_status'] === 'cancelled' ? 'Event cancelled' : 'Registration ' . e($r['registration_status']) ?></td>
                     <td class="text-end fw-semibold"><?= currency($r['amount']) ?></td>
-                    <td class="small"><code><?= e($r['capture_id'] ?: '—') ?></code><div class="text-muted">paid <?= $r['paid_at'] ? date('M d, Y', strtotime($r['paid_at'])) : '—' ?></div></td>
+                    <td class="small"><code><?= e($r['capture_id'] ?: '—') ?></code><div class="text-muted">paid <?= $r['paid_at'] ? date('M d, Y', strtotime($r['paid_at'])) : '—' ?></div>
+                        <?php if ($ppUrl = RefundTrackingService::paypalActivityUrl($r['capture_id'])): ?><a href="<?= e($ppUrl) ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mt-1"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Open in PayPal</a><?php endif; ?></td>
                     <td>
-                        <form method="post" action="<?= url('organizer-refund-record') ?>" class="d-flex flex-column gap-1" data-confirm="Record this refund? It cannot be edited afterwards, so make sure you already refunded <?= e(currency($r['amount'])) ?> in PayPal." data-confirm-title="Record refund?" data-confirm-button="Yes, record it">
+                        <form method="post" action="<?= url('organizer-refund-record') ?>" enctype="multipart/form-data" class="d-flex flex-column gap-1" data-confirm="Record this refund? It cannot be edited afterwards, so make sure you already refunded <?= e(currency($r['amount'])) ?> in PayPal." data-confirm-title="Record refund?" data-confirm-button="Yes, record it">
                             <?= Csrf::field() ?>
                             <input type="hidden" name="payment_id" value="<?= (int) $r['payment_id'] ?>">
-                            <input type="text" name="paypal_refund_id" class="form-control form-control-sm" placeholder="PayPal refund transaction ID" required maxlength="25" pattern="[A-Za-z0-9]{12,25}" aria-label="PayPal refund transaction ID for <?= e($r['participant_name']) ?>">
+                            <input type="text" name="paypal_refund_id" class="form-control form-control-sm" placeholder="PayPal refund ID (optional)" maxlength="25" pattern="[A-Za-z0-9]{12,25}" aria-label="PayPal refund transaction ID for <?= e($r['participant_name']) ?>">
+                            <label class="small text-muted mb-0" for="proof<?= (int) $r['payment_id'] ?>">or a screenshot of the refund</label>
+                            <input type="file" name="proof" id="proof<?= (int) $r['payment_id'] ?>" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.pdf">
+                            <div class="form-text mt-0">Give at least one. The participant confirms they received it.</div>
                             <input type="text" name="note" class="form-control form-control-sm" placeholder="Note (optional)" maxlength="500" aria-label="Note">
                             <button class="btn btn-sm btn-evora-primary">Record Refund</button>
                         </form>
@@ -66,7 +70,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
     <?php else: ?>
     <div class="table-responsive">
         <table class="table table-sm align-middle table-datatable">
-            <thead><tr><th>Recorded</th><th>Participant</th><th>Event</th><th class="text-end">Amount</th><th>PayPal refund ID</th><th>Participant answer</th></tr></thead>
+            <thead><tr><th>Recorded</th><th>Participant</th><th>Event</th><th class="text-end">Amount</th><th>Proof</th><th>Participant answer</th></tr></thead>
             <tbody>
             <?php foreach ($done as $r): ?>
                 <?php [$label, $badge] = $responseBadge[$r['participant_response']] ?? ['—', 'bg-secondary']; ?>
@@ -75,7 +79,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                     <td class="small"><?= e($r['participant_name']) ?></td>
                     <td class="small"><?= e($r['event_name']) ?></td>
                     <td class="text-end"><?= currency($r['amount']) ?></td>
-                    <td class="small"><code><?= e($r['paypal_refund_id']) ?></code><?= $r['refund_note'] ? '<div class="text-muted">' . e($r['refund_note']) . '</div>' : '' ?></td>
+                    <td class="small"><?php if ($r['paypal_refund_id']): ?><code><?= e($r['paypal_refund_id']) ?></code><?php endif; ?><?php if ($r['refund_proof_path']): ?><div><a href="<?= uploadUrl($r['refund_proof_path']) ?>"><i class="bi bi-image me-1" aria-hidden="true"></i>View screenshot</a></div><?php endif; ?><?= $r['refund_note'] ? '<div class="text-muted">' . e($r['refund_note']) . '</div>' : '' ?></td>
                     <td class="small"><span class="badge <?= $badge ?>"><?= e($label) ?></span><?= $r['participant_note'] ? '<div class="text-muted">' . e($r['participant_note']) . '</div>' : '' ?></td>
                 </tr>
             <?php endforeach; ?>

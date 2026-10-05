@@ -23,7 +23,7 @@ class RefundTrackingService
 
     private const BASE_SELECT = 'SELECT pay.id AS payment_id, pay.amount, pay.paid_at, pay.gateway_payment_id AS capture_id, r.id AS registration_id, r.status AS registration_status,
             e.id AS event_id, e.name AS event_name, e.status AS event_status, e.organizer_id, o.organization_name, u.id AS participant_user_id, u.full_name AS participant_name, u.email AS participant_email,
-            rr.id AS refund_id, rr.paypal_refund_id, rr.note AS refund_note, rr.recorded_at, rr.participant_response, rr.participant_note, rr.participant_responded_at
+            rr.id AS refund_id, rr.paypal_refund_id, rr.proof_path AS refund_proof_path, rr.note AS refund_note, rr.recorded_at, rr.participant_response, rr.participant_note, rr.participant_responded_at
         FROM payments pay
         JOIN registrations r ON r.id = pay.registration_id
         JOIN events e ON e.id = r.event_id
@@ -72,13 +72,32 @@ class RefundTrackingService
         return (int) $stmt->fetchColumn();
     }
 
-    /** The organizer records a refund they made in PayPal. Throws DomainException with a user-facing message. */
-    public static function record(PDO $db, int $organizerId, int $userId, int $paymentId, string $paypalRefundId, string $note): void
+    /** The payment's page in the organizer's PayPal account, where its Refund button is (v55). */
+    public static function paypalActivityUrl(?string $captureId): ?string
+    {
+        if (!$captureId) {
+            return null;
+        }
+        $host = (defined('PAYPAL_ENV') && PAYPAL_ENV === 'live') ? 'https://www.paypal.com' : 'https://www.sandbox.paypal.com';
+
+        return $host . '/activity/payment/' . rawurlencode($captureId);
+    }
+
+    /**
+     * The organizer records a refund they made in PayPal: the refund transaction ID, a screenshot
+     * of the refund, or both — at least one (v55). The participant then confirms it.
+     * Throws DomainException with a user-facing message.
+     */
+    public static function record(PDO $db, int $organizerId, int $userId, int $paymentId, string $paypalRefundId, string $note, ?array $proofFile = null): void
     {
         $paypalRefundId = strtoupper(trim($paypalRefundId));
         $note = trim($note);
-        if (!preg_match('/^[A-Z0-9]{12,25}$/', $paypalRefundId)) {
-            throw new DomainException('Enter the refund transaction ID exactly as PayPal shows it (letters and numbers, usually 17 characters).');
+        $hasFile = $proofFile !== null && (int) ($proofFile['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+        if ($paypalRefundId === '' && !$hasFile) {
+            throw new DomainException('Add the PayPal refund transaction ID or a screenshot of the refund (at least one).');
+        }
+        if ($paypalRefundId !== '' && !preg_match('/^[A-Z0-9]{12,25}$/', $paypalRefundId)) {
+            throw new DomainException('Enter the refund transaction ID exactly as PayPal shows it (letters and numbers, usually 17 characters), or leave it empty and attach a screenshot.');
         }
         if (mb_strlen($note) > 500) {
             throw new DomainException('The note can be at most 500 characters.');
@@ -92,23 +111,33 @@ class RefundTrackingService
         if ($row['refund_id']) {
             throw new DomainException('A refund was already recorded for this payment.');
         }
-        if ($row['capture_id'] && strcasecmp($row['capture_id'], $paypalRefundId) === 0) {
-            throw new DomainException('That is the original payment\'s transaction ID. Enter the ID of the REFUND transaction from your PayPal activity.');
+        if ($paypalRefundId !== '') {
+            if ($row['capture_id'] && strcasecmp($row['capture_id'], $paypalRefundId) === 0) {
+                throw new DomainException('That is the original payment\'s transaction ID. Enter the ID of the REFUND transaction from your PayPal activity, or attach a screenshot instead.');
+            }
+            $dup = $db->prepare('SELECT 1 FROM paypal_refund_records WHERE paypal_refund_id = :rid');
+            $dup->execute(['rid' => $paypalRefundId]);
+            if ($dup->fetchColumn()) {
+                throw new DomainException('That PayPal refund ID was already used for another payment.');
+            }
         }
-        $dup = $db->prepare('SELECT 1 FROM paypal_refund_records WHERE paypal_refund_id = :rid');
-        $dup->execute(['rid' => $paypalRefundId]);
-        if ($dup->fetchColumn()) {
-            throw new DomainException('That PayPal refund ID was already used for another payment.');
+        $proofPath = null;
+        if ($hasFile) {
+            $proofPath = Upload::handle($proofFile, 'refund_proofs', UPLOAD_ALLOWED_DOC);
+            if ($proofPath === null) {
+                throw new DomainException('The screenshot must be a JPG, PNG or PDF of at most 5 MB.');
+            }
         }
 
-        $db->prepare('INSERT INTO paypal_refund_records (payment_id, registration_id, event_id, organizer_id, amount, paypal_refund_id, note, recorded_by)
-            VALUES (:pid, :rid, :eid, :oid, :amount, :ppid, :note, :by)')->execute([
-            'pid' => $paymentId, 'rid' => $row['registration_id'], 'eid' => $row['event_id'], 'oid' => $organizerId,
-            'amount' => $row['amount'], 'ppid' => $paypalRefundId, 'note' => $note !== '' ? $note : null, 'by' => $userId,
+        $db->prepare('INSERT INTO paypal_refund_records (payment_id, registration_id, event_id, organizer_id, amount, paypal_refund_id, proof_path, note, recorded_by)
+            VALUES (:pid, :rid, :eid, :oid, :amount, :ppid, :proof, :note, :by)')->execute([
+            'pid' => $paymentId, 'rid' => $row['registration_id'], 'eid' => $row['event_id'], 'oid' => $organizerId, 'amount' => $row['amount'],
+            'ppid' => $paypalRefundId !== '' ? $paypalRefundId : null, 'proof' => $proofPath, 'note' => $note !== '' ? $note : null, 'by' => $userId,
         ]);
-        Logger::log($userId, 'paypal_refund_recorded', 'Payment #' . $paymentId . ' (' . currency($row['amount']) . ') refunded via PayPal, refund ID ' . $paypalRefundId);
+        $proofText = $paypalRefundId !== '' ? 'PayPal refund ID ' . $paypalRefundId : 'a screenshot of the refund is attached';
+        Logger::log($userId, 'paypal_refund_recorded', 'Payment #' . $paymentId . ' (' . currency($row['amount']) . ') refunded via PayPal: ' . $proofText);
         notify((int) $row['participant_user_id'], 'Refund Sent by Organizer',
-            $row['organization_name'] . ' says it refunded your ' . currency($row['amount']) . ' PayPal payment for "' . $row['event_name'] . '" (PayPal refund ID ' . $paypalRefundId . '). Check your PayPal account, then confirm on Payments & Receipts whether you received it.',
+            $row['organization_name'] . ' says it refunded your ' . currency($row['amount']) . ' PayPal payment for "' . $row['event_name'] . '" (' . $proofText . '). Check your PayPal account, then confirm on Payments & Receipts whether you received it.',
             'refund_recorded', ['category' => 'refund', 'notice_type' => 'action_required', 'reference_type' => 'payment', 'reference_id' => $paymentId]);
     }
 

@@ -52,7 +52,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                     <td class="small"><?= e($r['event_name']) ?><div class="text-muted"><?= $r['event_status'] === 'cancelled' ? 'Event cancelled' : 'Registration ' . e($r['registration_status']) ?></div></td>
                     <td class="small"><?= e($r['participant_name']) ?></td>
                     <td class="text-end"><?= currency($r['amount']) ?></td>
-                    <td class="small"><code><?= e($r['capture_id'] ?: '—') ?></code><?= $r['paypal_refund_id'] ? '<div>Refund: <code>' . e($r['paypal_refund_id']) . '</code></div>' : '' ?><?= $r['participant_note'] ? '<div class="text-muted">Participant: ' . e($r['participant_note']) . '</div>' : '' ?></td>
+                    <td class="small"><code><?= e($r['capture_id'] ?: '—') ?></code><?= $r['paypal_refund_id'] ? '<div>Refund: <code>' . e($r['paypal_refund_id']) . '</code></div>' : '' ?><?= $r['refund_proof_path'] ? '<div><a href="' . uploadUrl($r['refund_proof_path']) . '"><i class="bi bi-image me-1" aria-hidden="true"></i>Refund screenshot</a></div>' : '' ?><?= $r['participant_note'] ? '<div class="text-muted">Participant: ' . e($r['participant_note']) . '</div>' : '' ?></td>
                     <td class="small text-nowrap"><?= $r['recorded_at'] ? date('M d, Y', strtotime($r['recorded_at'])) : '—' ?></td>
                 </tr>
             <?php endforeach; ?>

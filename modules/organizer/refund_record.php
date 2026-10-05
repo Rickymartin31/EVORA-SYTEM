@@ -13,7 +13,7 @@ try {
     if (!$organizerId) {
         throw new DomainException('Only approved organizers can record refunds.');
     }
-    RefundTrackingService::record($db, $organizerId, (int) Auth::id(), (int) ($_POST['payment_id'] ?? 0), (string) ($_POST['paypal_refund_id'] ?? ''), (string) ($_POST['note'] ?? ''));
+    RefundTrackingService::record($db, $organizerId, (int) Auth::id(), (int) ($_POST['payment_id'] ?? 0), (string) ($_POST['paypal_refund_id'] ?? ''), (string) ($_POST['note'] ?? ''), $_FILES['proof'] ?? null);
     flash('success', 'Refund recorded. The participant was notified and asked to confirm they received it.');
 } catch (DomainException $e) {
     flash('error', $e->getMessage());

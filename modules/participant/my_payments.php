@@ -68,7 +68,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                             <?php if (!$rf['refund_id']): ?>
                                 <div class="small text-warning-emphasis mt-1"><i class="bi bi-hourglass-split" aria-hidden="true"></i> Refund due from the organizer (<?= $rf['event_status'] === 'cancelled' ? 'event cancelled' : 'registration ' . e($rf['registration_status']) ?>)</div>
                             <?php else: ?>
-                                <div class="small mt-1"><span class="badge bg-info">Refunded by organizer</span> <span class="text-muted">PayPal refund ID</span> <code><?= e($rf['paypal_refund_id']) ?></code></div>
+                                <div class="small mt-1"><span class="badge bg-info">Refunded by organizer</span><?php if ($rf['paypal_refund_id']): ?> <span class="text-muted">PayPal refund ID</span> <code><?= e($rf['paypal_refund_id']) ?></code><?php endif; ?><?php if ($rf['refund_proof_path']): ?> <a href="<?= uploadUrl($rf['refund_proof_path']) ?>"><i class="bi bi-image" aria-hidden="true"></i> View refund screenshot</a><?php endif; ?></div>
                                 <?php if ($rf['participant_response'] === 'none'): ?>
                                     <form method="post" action="<?= url('my-refund-respond') ?>" class="d-flex flex-wrap gap-1 mt-1">
                                         <?= Csrf::field() ?><input type="hidden" name="payment_id" value="<?= (int) $p['id'] ?>">

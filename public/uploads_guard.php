@@ -144,6 +144,13 @@ if ($role === 'admin' || $publicContent) {
     $stmt->execute(['p' => $rel]);
     $row = $stmt->fetch();
     $authorized = $row && $role === 'organizer' && (int) $row['user_id'] === $userId;
+} elseif (str_starts_with($rel, 'refund_proofs/')) {
+    // PayPal refund screenshots (v55): the organizer who recorded it and the participant who was refunded.
+    $stmt = $db->prepare('SELECT o.user_id AS organizer_user, p.user_id AS participant_user FROM paypal_refund_records rr
+        JOIN organizers o ON o.id = rr.organizer_id JOIN registrations r ON r.id = rr.registration_id JOIN participants p ON p.id = r.participant_id WHERE rr.proof_path = :p');
+    $stmt->execute(['p' => $rel]);
+    $row = $stmt->fetch();
+    $authorized = $row && (($role === 'organizer' && (int) $row['organizer_user'] === $userId) || ($role === 'participant' && (int) $row['participant_user'] === $userId));
 } elseif (str_starts_with($rel, 'refunds/')) {
     // Refund proof (PayMongo dashboard screenshots): admin-only (handled above).
     // Participants see the refund status and a masked reference instead.
