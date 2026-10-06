@@ -2130,3 +2130,6 @@ body.gsearch-open { overflow: hidden; }
 .race-stat-label { font-size: .75rem; color: var(--bs-secondary-color); text-transform: uppercase; letter-spacing: .04em; }
 [data-theme="dark"] .race-map .leaflet-tile-pane { filter: brightness(.8) contrast(1.1); }
 @media (max-width: 575.98px) { .race-map { height: 360px; } .race-map-sm { height: 300px; } }
+
+/* v57 event setup wizard: compact tool chips */
+.wizard-tool-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .7rem; border: 1px solid var(--bs-border-color); border-radius: 999px; font-size: .8125rem; background: var(--bs-body-bg); }

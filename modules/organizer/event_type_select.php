@@ -167,9 +167,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
 
 <div class="card-evora p-4 mb-3">
     <h6 class="fw-semibold mb-1">Event Setup Wizard</h6>
-    <p class="text-muted small mb-0">Pick the type of event you're organizing. For each type, EVORA shows what the
-        system will help you manage, what to prepare before you create the event, and which tools you'll use once
-        it's live &mdash; so this isn't just a blank form, it's a guide for running the whole event.</p>
+    <p class="text-muted small mb-0">Pick the type of event you're organizing.</p>
 </div>
 
 <div class="row g-3 mb-3" role="tablist">
@@ -191,42 +189,16 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
         <?php foreach ($categories as $i => $c): ?>
             <?php $meta = $categoryMeta[$c['slug']] ?? $defaultMeta; ?>
             <div class="tab-pane fade <?= $i === 0 ? 'show active' : '' ?>" id="pane-<?= e($c['slug']) ?>" role="tabpanel">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="border rounded p-3 h-100">
-                            <h6 class="small text-uppercase text-muted fw-bold mb-2"><i class="bi bi-gear me-1"></i>What EVORA Helps You Manage</h6>
-                            <ul class="small mb-0 ps-3">
-                                <?php foreach ($meta['manages'] as $item): ?>
-                                    <li><?= e($item) ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="border rounded p-3 h-100 bg-light">
-                            <h6 class="small text-uppercase text-muted fw-bold mb-2"><i class="bi bi-list-check me-1"></i>Prepare Before You Create This Event</h6>
-                            <ul class="small mb-0 ps-3">
-                                <?php foreach ($meta['checklist'] as $item): ?>
-                                    <li><?= e($item) ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="border rounded p-3 h-100">
-                            <h6 class="small text-uppercase text-muted fw-bold mb-2"><i class="bi bi-toolbox me-1"></i>Tools Available After Creation</h6>
-                            <ul class="list-unstyled small mb-0">
-                                <?php foreach ($meta['tools'] as $tool): ?>
-                                    <li class="mb-1"><i class="bi <?= e($tool['icon']) ?> text-primary me-1"></i><?= e($tool['label']) ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
-                    </div>
+                <div class="small text-uppercase text-muted fw-bold mb-2"><i class="bi bi-toolbox me-1"></i>Tools you'll get</div>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <?php foreach ($meta['tools'] as $tool): ?>
+                        <span class="wizard-tool-chip"><i class="bi <?= e($tool['icon']) ?> text-primary"></i><?= e($tool['label']) ?></span>
+                    <?php endforeach; ?>
                 </div>
                 <?php if (!empty($meta['note'])): ?>
-                    <div class="alert alert-warning small mt-3 mb-0"><i class="bi bi-info-circle me-1"></i><?= e($meta['note']) ?></div>
+                    <div class="alert alert-warning small mb-3"><i class="bi bi-info-circle me-1"></i><?= e($meta['note']) ?></div>
                 <?php endif; ?>
-                <div class="mt-3">
+                <div class="d-flex flex-wrap gap-2">
                     <?php if ($c['slug'] === 'sports-tournament'): ?>
                         <a href="<?= url('organizer-sport-select') ?>" class="btn btn-evora-primary">
                             <i class="bi bi-arrow-right-circle me-1"></i> Proceed &mdash; Choose Your Sport
@@ -236,6 +208,34 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                             <i class="bi bi-arrow-right-circle me-1"></i> Proceed &mdash; Create a <?= e($c['name']) ?> Event
                         </a>
                     <?php endif; ?>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#details-<?= e($c['slug']) ?>"
+                            aria-expanded="false" aria-controls="details-<?= e($c['slug']) ?>" data-details-toggle>
+                        <i class="bi bi-chevron-down me-1"></i><span>See details</span>
+                    </button>
+                </div>
+                <div class="collapse" id="details-<?= e($c['slug']) ?>">
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <h6 class="small text-uppercase text-muted fw-bold mb-2"><i class="bi bi-gear me-1"></i>What EVORA Helps You Manage</h6>
+                                <ul class="small mb-0 ps-3">
+                                    <?php foreach ($meta['manages'] as $item): ?>
+                                        <li><?= e($item) ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100 bg-light">
+                                <h6 class="small text-uppercase text-muted fw-bold mb-2"><i class="bi bi-list-check me-1"></i>Prepare Before You Create This Event</h6>
+                                <ul class="small mb-0 ps-3">
+                                    <?php foreach ($meta['checklist'] as $item): ?>
+                                        <li><?= e($item) ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         <?php endforeach; ?>
@@ -248,6 +248,16 @@ document.addEventListener('DOMContentLoaded', function () {
         var trigger = document.querySelector('[data-bs-target="' + hash + '"]');
         if (trigger) new bootstrap.Tab(trigger).show();
     }
+});
+// "See details" <-> "Hide details"
+['show.bs.collapse', 'hide.bs.collapse'].forEach(function (type) {
+    document.addEventListener(type, function (e) {
+        var btn = document.querySelector('[data-details-toggle][data-bs-target="#' + e.target.id + '"]');
+        if (!btn) return;
+        var open = type === 'show.bs.collapse';
+        btn.querySelector('span').textContent = open ? 'Hide details' : 'See details';
+        btn.querySelector('i').className = 'bi ' + (open ? 'bi-chevron-up' : 'bi-chevron-down') + ' me-1';
+    });
 });
 document.addEventListener('shown.bs.tab', function (e) {
     var target = e.target.getAttribute('data-bs-target');
