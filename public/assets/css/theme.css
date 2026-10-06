@@ -2119,3 +2119,14 @@ body.gsearch-open { overflow: hidden; }
 .session-warning-box { width: min(420px, 100%); background: var(--evora-surface); border-radius: 1rem; padding: 1.75rem 1.5rem; text-align: center; box-shadow: var(--evora-shadow-lg); border: 1px solid var(--evora-border); }
 .session-warning-icon { width: 3.5rem; height: 3.5rem; margin: 0 auto .75rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--evora-warning-bg); color: var(--evora-warning-text); font-size: 1.6rem; }
 .session-warning .sw-left { color: var(--evora-heading); font-variant-numeric: tabular-nums; }
+
+/* v56 race maps */
+.race-map { height: 460px; border-radius: 10px; border: 1px solid var(--bs-border-color); z-index: 0; }
+.race-map-sm { height: 360px; }
+.race-map-drawing, .race-map-drawing .leaflet-interactive { cursor: crosshair; }
+.race-runner span { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; color: #fff; font-size: 11px; font-weight: 700; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.race-stat { background: var(--bs-tertiary-bg, #f8f9fa); border-radius: 10px; padding: .6rem .25rem; }
+.race-stat-value { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.race-stat-label { font-size: .75rem; color: var(--bs-secondary-color); text-transform: uppercase; letter-spacing: .04em; }
+[data-theme="dark"] .race-map .leaflet-tile-pane { filter: brightness(.8) contrast(1.1); }
+@media (max-width: 575.98px) { .race-map { height: 360px; } .race-map-sm { height: 300px; } }

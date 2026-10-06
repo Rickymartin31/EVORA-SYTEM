@@ -53,6 +53,12 @@ $checkpointTypeLabels = [
     'turnaround_point' => ['label' => 'Turn-around Point', 'icon' => 'bi-arrow-repeat', 'badge' => 'bg-primary'],
 ];
 
+// v56: the route on the map, mapped checkpoints and live tracking
+$routePath = RaceTrackingService::route($db, $eventId);
+$mapCheckpoints = array_map(fn ($c) => ['label' => $c['sequence_no'] . '. ' . $c['label'], 'type' => $c['checkpoint_type'], 'lat' => $c['lat_f'], 'lng' => $c['lng_f'], 'radius' => (int) $c['radius_m']],
+    RaceTrackingService::mappedCheckpoints($db, $eventId));
+$trackerOpen = date('Y-m-d') >= $event['event_date'] && date('Y-m-d') <= date('Y-m-d', strtotime($event['event_date'] . ' +1 day'));
+
 $pageDescription = 'Set up route checkpoints and route maps for runners and marshals.';
 $pageTitle = 'Route Management';
 $activeRoute = 'organizer-events';
@@ -63,6 +69,56 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
     ['label' => $event['name'], 'route' => 'organizer-event-manage', 'params' => ['id' => $eventId]],
     ['label' => 'Route Management'],
 ]); ?>
+<link rel="stylesheet" href="<?= assetUrl('vendor/leaflet/leaflet.css') ?>">
+
+<div class="card-evora p-4" data-race-map-root>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h6 class="fw-semibold mb-0"><i class="bi bi-map me-1"></i> Route Map &amp; Live Tracking</h6>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Map view">
+            <button type="button" class="btn btn-outline-primary active" data-rm="tab-route"><i class="bi bi-bezier2"></i> Route</button>
+            <button type="button" class="btn btn-outline-primary" data-rm="tab-live"><i class="bi bi-broadcast"></i> Live Runners</button>
+        </div>
+    </div>
+    <div data-rm-pane="route">
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" data-rm="draw"><i class="bi bi-pencil"></i> Draw route</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-rm="undo"><i class="bi bi-arrow-counterclockwise"></i> Undo</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-rm="clear"><i class="bi bi-trash"></i> Clear</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-rm="locate"><i class="bi bi-crosshair"></i> My location</button>
+            <span class="ms-auto small">Route length: <strong data-rm="distance">0.00 km</strong></span>
+            <form method="post" action="<?= url('organizer-route-save') ?>" class="d-inline">
+                <?= Csrf::field() ?>
+                <input type="hidden" name="event_id" value="<?= $eventId ?>">
+                <input type="hidden" name="points" data-rm="points" value="">
+                <button type="submit" class="btn btn-sm btn-evora-primary" data-rm="save"><i class="bi bi-save"></i> Save Route</button>
+            </form>
+        </div>
+        <div class="small text-muted mb-2" data-rm="hint" aria-live="polite"></div>
+    </div>
+    <div data-rm-pane="live" class="d-none">
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2 small">
+            <strong data-rm="summary">Loading…</strong>
+            <span class="text-muted ms-auto" data-rm="updated"></span>
+        </div>
+        <?php if (!$trackerOpen): ?>
+            <div class="alert alert-info small py-2 mb-2">Runners can start the tracker on race day (<?= date('M d, Y', strtotime($event['event_date'])) ?>) from their registration. This list refreshes every 10 seconds.</div>
+        <?php endif; ?>
+    </div>
+    <div id="raceMap" class="race-map"
+         data-route="<?= e(json_encode($routePath['points'] ?? [])) ?>"
+         data-checkpoints="<?= e(json_encode($mapCheckpoints)) ?>"
+         data-live-url="<?= e(url('organizer-race-live', ['event_id' => $eventId])) ?>"></div>
+    <div data-rm-pane="route" class="form-text">Draw the official course in running order, then give each checkpoint a map position (use <strong>Pick on map</strong> in the checkpoint form). Runners who skip a checkpoint or a big part of the course are flagged for your review.</div>
+    <div data-rm-pane="live" class="d-none mt-3">
+        <div class="table-responsive">
+            <table class="table align-middle table-sm mb-0">
+                <thead><tr><th>Bib</th><th>Runner</th><th>Distance</th><th>Last GPS</th><th>Route check</th><th></th></tr></thead>
+                <tbody data-rm="live-body"></tbody>
+            </table>
+        </div>
+        <div class="form-text">Phone GPS can be off by 10–30 m. A "Possible shortcut" is a flag to review, not an automatic disqualification.</div>
+    </div>
+</div>
 
 <div class="row g-3">
     <div class="col-lg-8">
@@ -73,7 +129,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
             <?php else: ?>
             <div class="table-responsive">
                 <table class="table align-middle table-datatable">
-                    <thead><tr><th>#</th><th>Label</th><th>Type</th><th>Distance (km)</th><th>Status</th><th></th></tr></thead>
+                    <thead><tr><th>#</th><th>Label</th><th>Type</th><th>Distance (km)</th><th>Map</th><th>Status</th><th></th></tr></thead>
                     <tbody>
                     <?php foreach ($checkpoints as $c): ?>
                         <?php $ct = $checkpointTypeLabels[$c['checkpoint_type']] ?? $checkpointTypeLabels['checkpoint']; ?>
@@ -82,6 +138,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                             <td><?= e($c['label']) ?></td>
                             <td><span class="badge <?= $ct['badge'] ?>"><i class="bi <?= $ct['icon'] ?>"></i> <?= e($ct['label']) ?></span></td>
                             <td><?= $c['distance_km'] !== null ? number_format((float) $c['distance_km'], 2) . ' km' : '—' ?></td>
+                            <td><?= $c['lat'] !== null ? '<i class="bi bi-geo-alt-fill text-success" title="On the map"></i><span class="visually-hidden">On the map</span>' : '<span class="text-muted small">Not set</span>' ?></td>
                             <td><span class="badge <?= $c['status'] === 'active' ? 'bg-success' : 'bg-secondary' ?>"><?= $c['status'] === 'active' ? 'Active' : 'Inactive' ?></span></td>
                             <td class="text-nowrap">
                                 <a href="<?= url('organizer-checkpoints', ['event_id' => $eventId, 'edit' => $c['id']]) ?>" class="btn btn-sm btn-outline-secondary">Edit</a>
@@ -135,9 +192,22 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="mb-3">
+                <div class="mb-2">
                     <label class="form-label small">Distance (km)</label>
                     <input type="number" step="0.01" min="0" name="distance_km" class="form-control form-control-sm" placeholder="e.g. 3.00" value="<?= e($editCheckpoint['distance_km'] ?? '') ?>">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small">Map position</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" step="0.000001" min="-90" max="90" name="lat" class="form-control" placeholder="Latitude" aria-label="Latitude" data-rm="cp-lat" value="<?= e($editCheckpoint['lat'] ?? '') ?>">
+                        <input type="number" step="0.000001" min="-180" max="180" name="lng" class="form-control" placeholder="Longitude" aria-label="Longitude" data-rm="cp-lng" value="<?= e($editCheckpoint['lng'] ?? '') ?>">
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm w-100 mt-1" data-rm="pick"><i class="bi bi-geo-alt"></i> Pick on map</button>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">Pass radius (meters)</label>
+                    <input type="number" name="radius_m" min="20" max="500" class="form-control form-control-sm" value="<?= (int) ($editCheckpoint['radius_m'] ?? 60) ?>">
+                    <div class="form-text">A runner passes the checkpoint within this distance.</div>
                 </div>
                 <button type="submit" class="btn btn-evora-primary btn-sm w-100"><?= $editCheckpoint ? 'Update Checkpoint' : 'Add Checkpoint' ?></button>
                 <?php if ($editCheckpoint): ?>
@@ -179,4 +249,6 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
     </form>
     <div class="form-text">Approved participants get notified automatically when a new route picture is uploaded.</div>
 </div>
+<script src="<?= assetUrl('vendor/leaflet/leaflet.js') ?>"></script>
+<script src="<?= assetUrl('js/race_map.js') ?>"></script>
 <?php include EVORA_ROOT . '/modules/shared/partials/layout_bottom.php'; ?>

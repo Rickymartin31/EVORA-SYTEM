@@ -30,6 +30,7 @@ require_once EVORA_ROOT . '/core/MailService.php';
 require_once EVORA_ROOT . '/core/EventDocumentsService.php';
 require_once EVORA_ROOT . '/core/PasswordResetService.php';
 require_once EVORA_ROOT . '/core/RefundTrackingService.php';
+require_once EVORA_ROOT . '/core/RaceTrackingService.php';
 require_once EVORA_ROOT . '/core/LoginOtpService.php';
 require_once EVORA_ROOT . '/core/EmailVerificationService.php';
 require_once EVORA_ROOT . '/core/WaitlistService.php';
@@ -48,7 +49,7 @@ require_once EVORA_ROOT . '/core/Router.php';
 require_once EVORA_ROOT . '/core/helpers.php';
 
 // The bell's live refresh is passive: it must not reset the idle-session timer.
-Auth::start(in_array($_GET['route'] ?? '', ['notifications-poll', 'today-stats'], true)); // polling never keeps an idle session alive
+Auth::start(in_array($_GET['route'] ?? '', ['notifications-poll', 'today-stats', 'organizer-race-live'], true)); // polling never keeps an idle session alive
 
 $router = new Router();
 
@@ -151,6 +152,10 @@ $router->get('organizer-game-controller', EVORA_ROOT . '/modules/organizer/game_
 $router->get('organizer-game-state', EVORA_ROOT . '/modules/organizer/game_state_action.php');
 $router->get('organizer-checkpoints', EVORA_ROOT . '/modules/organizer/checkpoints_list.php');
 $router->get('organizer-checkpoint-save', EVORA_ROOT . '/modules/organizer/checkpoint_save.php');
+$router->get('organizer-route-save', EVORA_ROOT . '/modules/organizer/route_save.php');
+$router->get('organizer-race-live', EVORA_ROOT . '/modules/organizer/race_live.php');
+$router->get('race-tracker', EVORA_ROOT . '/modules/participant/race_tracker.php');
+$router->get('race-track-action', EVORA_ROOT . '/modules/participant/race_track_action.php');
 $router->get('organizer-route-image-action', EVORA_ROOT . '/modules/organizer/route_image_action.php');
 $router->get('organizer-race-results', EVORA_ROOT . '/modules/organizer/race_results.php');
 $router->get('organizer-race-result-save', EVORA_ROOT . '/modules/organizer/race_result_save.php');
