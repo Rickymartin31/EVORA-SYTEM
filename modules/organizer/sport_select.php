@@ -90,7 +90,7 @@ function sportBlurb(array $s): string
                     <span class="badge bg-secondary"><?= e(ucfirst(str_replace('_', ' ', $s['default_tournament_format']))) ?></span>
                 </div>
                 <a href="<?= url('organizer-event-form', ['category_id' => $sportsCategoryId, 'sport_id' => $s['id']]) ?>" class="btn btn-evora-primary btn-sm w-100">
-                    Manage <?= e($s['name']) ?>
+                    <i class="bi bi-plus-circle me-1"></i>Create <?= e($s['name']) ?> Event
                 </a>
             </div>
         </div>
@@ -101,7 +101,7 @@ function sportBlurb(array $s): string
             <p class="text-muted small mb-2 flex-grow-1">Not listed above? Use this and EVORA will fall back to generic team-based tools.</p>
             <?php $other = array_values(array_filter($sports, fn ($s) => $s['name'] === 'Other'))[0] ?? null; ?>
             <?php if ($other): ?>
-            <a href="<?= url('organizer-event-form', ['category_id' => $sportsCategoryId, 'sport_id' => $other['id']]) ?>" class="btn btn-outline-primary btn-sm w-100">Manage Other Sport</a>
+            <a href="<?= url('organizer-event-form', ['category_id' => $sportsCategoryId, 'sport_id' => $other['id']]) ?>" class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-plus-circle me-1"></i>Create Other Sport Event</a>
             <?php endif; ?>
         </div>
     </div>
