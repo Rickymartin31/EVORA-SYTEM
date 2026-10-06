@@ -2133,3 +2133,11 @@ body.gsearch-open { overflow: hidden; }
 
 /* v57 event setup wizard: compact tool chips */
 .wizard-tool-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .7rem; border: 1px solid var(--bs-border-color); border-radius: 999px; font-size: .8125rem; background: var(--bs-body-bg); }
+
+/* v57 calendars: days that are over look "done" (faded, hatched); today stays highlighted */
+.fc .fc-daygrid-day.fc-day-past,
+.fc .fc-timegrid-col.fc-day-past { background-image: repeating-linear-gradient(135deg, rgba(108,117,125,.09) 0 6px, transparent 6px 12px); background-color: rgba(108,117,125,.06); }
+.fc .fc-day-past .fc-daygrid-day-number { opacity: .4; text-decoration: none; }
+.fc .fc-event-past { opacity: .5; filter: grayscale(.6); }
+.fc .fc-event-past:hover, .fc .fc-event-past:focus { opacity: .85; filter: none; }
+.fc .fc-list-event.fc-event-past { opacity: .55; }
