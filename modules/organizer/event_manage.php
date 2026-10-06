@@ -46,6 +46,14 @@ $staffCount = $db->prepare('SELECT COUNT(*) c FROM event_staff WHERE event_id = 
 $staffCount->execute(['id' => $eventId]);
 $staffCountVal = $staffCount->fetch()['c'];
 
+// v57: the latest participants for the Participant Overview preview
+$latestPeopleStmt = $db->prepare('SELECT u.full_name, r.bib_number, r.status, COALESCE(rc.name, r.distance_category) AS category
+    FROM registrations r JOIN participants p ON p.id = r.participant_id JOIN users u ON u.id = p.user_id
+    LEFT JOIN race_categories rc ON rc.id = r.race_category_id
+    WHERE r.event_id = :id AND r.status IN ("approved", "pending") ORDER BY r.registered_at DESC, r.id DESC LIMIT 5');
+$latestPeopleStmt->execute(['id' => $eventId]);
+$latestPeople = $latestPeopleStmt->fetchAll();
+
 $attendanceCount = $db->prepare('SELECT COUNT(*) c FROM attendance WHERE event_id = :id');
 $attendanceCount->execute(['id' => $eventId]);
 $attendanceCountVal = $attendanceCount->fetch()['c'];
@@ -330,7 +338,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
         <?php endif; ?>
 
         <span class="action-divider" aria-hidden="true"></span>
-        <a href="<?= url('organizer-registrations', ['event_id' => $event['id']]) ?>" class="btn btn-outline-secondary btn-sm"><i class="bi bi-people" aria-hidden="true"></i> Manage Participants</a>
+        <a href="<?= url('organizer-participants', ['event_id' => $event['id'], 'status' => 'all']) ?>" class="btn btn-outline-secondary btn-sm"><i class="bi bi-people" aria-hidden="true"></i> Participants</a>
         <?php if (in_array($event['status'], ['open', 'closed', 'ongoing'], true)): ?>
             <form method="post" action="<?= url('organizer-send-reminder') ?>" data-confirm="All approved participants get a reminder notification." data-confirm-title="Send a reminder?" data-confirm-button="Send Reminder">
                 <?= Csrf::field() ?>
@@ -413,11 +421,25 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
             <h6 class="fw-semibold mb-3"><i class="bi bi-people text-primary me-1"></i> Participant Overview</h6>
             <div class="row g-2 text-center mb-2">
                 <div class="col"><div class="fw-bold fs-5"><?= $event['max_participants'] ?></div><div class="text-muted small">Slots</div></div>
-                <div class="col"><div class="fw-bold fs-5"><?= $totalRegisteredCountVal ?></div><div class="text-muted small">Registered</div></div>
-                <div class="col"><div class="fw-bold fs-5 text-success"><?= $approvedCountVal ?></div><div class="text-muted small">Approved</div></div>
-                <div class="col"><div class="fw-bold fs-5 text-warning"><?= $pendingCountVal ?></div><div class="text-muted small">Pending</div></div>
-                <div class="col"><div class="fw-bold fs-5 text-danger"><?= $rejectedCountVal ?></div><div class="text-muted small">Rejected</div></div>
+                <div class="col"><a class="stat-link" href="<?= url('organizer-registrations', ['event_id' => $event['id']]) ?>"><div class="fw-bold fs-5"><?= $totalRegisteredCountVal ?></div><div class="text-muted small">Registered</div></a></div>
+                <div class="col"><a class="stat-link" href="<?= url('organizer-participants', ['event_id' => $event['id']]) ?>"><div class="fw-bold fs-5 text-success"><?= $approvedCountVal ?></div><div class="text-muted small">Approved</div></a></div>
+                <div class="col"><a class="stat-link" href="<?= url('organizer-participants', ['event_id' => $event['id'], 'status' => 'pending']) ?>"><div class="fw-bold fs-5 text-warning"><?= $pendingCountVal ?></div><div class="text-muted small">Pending</div></a></div>
+                <div class="col"><a class="stat-link" href="<?= url('organizer-registrations', ['event_id' => $event['id'], 'status' => 'rejected']) ?>"><div class="fw-bold fs-5 text-danger"><?= $rejectedCountVal ?></div><div class="text-muted small">Rejected</div></a></div>
             </div>
+            <?php if ($latestPeople): ?>
+                <div class="small text-uppercase text-muted fw-bold mt-3 mb-1">Latest participants</div>
+                <ul class="list-group list-group-flush small mb-2">
+                    <?php foreach ($latestPeople as $lp): ?>
+                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center gap-2">
+                            <span class="text-truncate"><?php if ($lp['bib_number']): ?><span class="fw-semibold me-1"><?= e($lp['bib_number']) ?></span><?php endif; ?><?= e($lp['full_name']) ?><?php if ($lp['category']): ?> <span class="text-muted">· <?= e($lp['category']) ?></span><?php endif; ?></span>
+                            <span class="badge badge-status-<?= e($lp['status']) ?>"><?= ucfirst(e($lp['status'])) ?></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php else: ?>
+                <p class="small text-muted mt-3 mb-2">Nobody has registered yet.</p>
+            <?php endif; ?>
+            <a href="<?= url('organizer-participants', ['event_id' => $event['id'], 'status' => 'all']) ?>" class="btn btn-outline-primary btn-sm w-100 mb-2"><i class="bi bi-people"></i> See All Participants (<?= (int) $approvedCountVal + (int) $pendingCountVal ?>)</a>
             <?php if ((int) $event['max_participants'] > 0 && ($approvedCountVal / $event['max_participants']) >= 0.9): ?>
                 <div class="alert alert-warning small py-2 mb-0"><i class="bi bi-exclamation-triangle"></i> Registration is almost full.</div>
             <?php elseif ($pendingPayCountVal >= 5): ?>

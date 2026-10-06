@@ -150,6 +150,7 @@ $router->get('organizer-match-save', EVORA_ROOT . '/modules/organizer/match_save
 $router->get('organizer-bracket', EVORA_ROOT . '/modules/organizer/bracket_view.php');
 $router->get('organizer-game-controller', EVORA_ROOT . '/modules/organizer/game_controller.php');
 $router->get('organizer-game-state', EVORA_ROOT . '/modules/organizer/game_state_action.php');
+$router->get('organizer-participants', EVORA_ROOT . '/modules/organizer/participants_list.php');
 $router->get('organizer-checkpoints', EVORA_ROOT . '/modules/organizer/checkpoints_list.php');
 $router->get('organizer-checkpoint-save', EVORA_ROOT . '/modules/organizer/checkpoint_save.php');
 $router->get('organizer-route-save', EVORA_ROOT . '/modules/organizer/route_save.php');
