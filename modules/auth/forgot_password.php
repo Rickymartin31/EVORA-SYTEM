@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?= TurnstileService::widget() ?>
         <button type="submit" class="btn btn-evora-primary w-100" <?= MailService::enabled() ? '' : 'disabled' ?>>Send Reset Link</button>
     </form>
-    <p class="text-center small mt-3"><a href="<?= url('login') ?>">&larr; Back to login</a></p>
+    <p class="text-center small mt-3"><a href="<?= url('login') ?>" class="back-link"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to login</a></p>
     <p class="text-center small text-muted mb-0"><a href="<?= url('user-agreement') ?>" class="text-muted">User Agreement</a> · <a href="<?= url('privacy-policy') ?>" class="text-muted">Privacy Policy</a></p>
 </div>
 </body>

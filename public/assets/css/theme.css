@@ -2269,3 +2269,23 @@ a .stat-card, a.stat-card { cursor: pointer; }
 .maintenance-status.is-scheduled { background: var(--evora-primary-soft); color: var(--evora-primary); }
 .maintenance-status.is-off { background: var(--evora-success-bg); color: var(--evora-success); }
 @media (prefers-reduced-motion: reduce) { .maintenance-icon { animation: none; } }
+
+/* v61 links: a "back" pill instead of "← text", and calmer text links whose underline grows on hover */
+.back-link { display: inline-flex; align-items: center; gap: .5rem; padding: .35rem .85rem .35rem .4rem; border-radius: 999px;
+  color: var(--evora-text-muted); font-weight: 600; text-decoration: none; transition: background-color .2s ease, color .2s ease; }
+.back-link .bi { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 50%;
+  background: var(--evora-primary-soft); color: var(--evora-primary); transition: transform .25s ease, background-color .2s ease, color .2s ease; }
+.back-link:hover, .back-link:focus-visible { background: var(--evora-primary-soft); color: var(--evora-primary); }
+.back-link:hover .bi, .back-link:focus-visible .bi { transform: translateX(-3px); background: var(--evora-primary); color: #fff; }
+
+:is(.auth-card, .evora-content, .maintenance-card, .container) a:is(:not([class]), .small, .link-inline):not(:has(img, div)) {
+  text-decoration: none; color: var(--evora-primary); padding-bottom: 1px;
+  background: linear-gradient(currentColor, currentColor) left bottom / 0 1.5px no-repeat,
+              linear-gradient(color-mix(in srgb, currentColor 30%, transparent), color-mix(in srgb, currentColor 30%, transparent)) left bottom / 100% 1px no-repeat;
+  transition: background-size .25s ease, color .15s ease; }
+:is(.auth-card, .evora-content, .maintenance-card, .container) a:is(:not([class]), .small, .link-inline):not(:has(img, div)):hover,
+:is(.auth-card, .evora-content, .maintenance-card, .container) a:is(:not([class]), .small, .link-inline):not(:has(img, div)):focus-visible {
+  color: var(--evora-primary-dark); background-size: 100% 1.5px, 100% 1px; }
+@media (prefers-reduced-motion: reduce) {
+  .back-link .bi, :is(.auth-card, .evora-content, .maintenance-card, .container) a { transition: none; }
+}

@@ -63,7 +63,7 @@ if (Auth::check()): redirect($next !== '' && Auth::role() === 'organizer' ? $nex
         <a href="<?= url('register-participant') ?>" class="btn btn-outline-secondary btn-sm w-50">Join as Participant</a>
         <a href="<?= url('register-organizer') ?>" class="btn btn-outline-secondary btn-sm w-50">Apply as Organizer</a>
     </div>
-    <p class="text-center small mt-3"><a href="<?= url('home') ?>">&larr; Back to home</a></p>
+    <p class="text-center small mt-3"><a href="<?= url('home') ?>" class="back-link"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to home</a></p>
     <p class="text-center small text-muted mb-0"><a href="<?= url('user-agreement') ?>" class="text-muted">User Agreement</a> · <a href="<?= url('privacy-policy') ?>" class="text-muted">Privacy Policy</a></p>
 </div>
 </body>
