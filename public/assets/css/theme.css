@@ -2149,3 +2149,36 @@ body.gsearch-open { overflow: hidden; }
     .participants-roster .dataTables_filter, .participants-roster .dataTables_length, .participants-roster .dataTables_paginate,
     .participants-roster .dataTables_info, .participants-roster .dt-buttons { display: none !important; }
 }
+
+/* v58 stat cards: a large soft icon in the corner instead of an icon box, an accent glow, and a lift on hover */
+.stat-card { --stat-accent: var(--evora-primary); isolation: isolate; cursor: default;
+  background-image: radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--stat-accent) 14%, transparent) 0, transparent 62%); }
+.stat-card.accent-success { --stat-accent: var(--evora-success); }
+.stat-card.accent-warning { --stat-accent: var(--evora-warning); }
+.stat-card.accent-danger { --stat-accent: var(--evora-danger); }
+.stat-card.accent-info { --stat-accent: var(--evora-accent); }
+.stat-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--stat-accent); opacity: .7; }
+.stat-card > i:first-child,
+.stat-card.accent-success > i:first-child, .stat-card.accent-warning > i:first-child,
+.stat-card.accent-danger > i:first-child, .stat-card.accent-info > i:first-child {
+  position: absolute; right: -.35rem; bottom: -1.1rem; z-index: -1;
+  width: auto; height: auto; margin: 0; background: none; border-radius: 0;
+  font-size: 5.75rem !important; line-height: 1; color: var(--stat-accent) !important;
+  opacity: .13; filter: blur(1.5px); transform: rotate(-12deg);
+  transition: transform .35s ease, opacity .35s ease, filter .35s ease; pointer-events: none;
+}
+.stat-card:hover { transform: translateY(-4px); box-shadow: var(--evora-shadow-md), 0 10px 24px -12px color-mix(in srgb, var(--stat-accent) 45%, transparent); }
+.stat-card:hover > i:first-child { transform: rotate(-4deg) scale(1.12); opacity: .22; filter: blur(.5px); }
+a .stat-card, a.stat-card { cursor: pointer; }
+[data-theme="dark"] .stat-card { background-image: radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--stat-accent) 18%, transparent) 0, transparent 62%); }
+[data-theme="dark"] .stat-card > i:first-child { opacity: .18; }
+[data-theme="dark"] .stat-card:hover > i:first-child { opacity: .28; }
+@media (max-width: 575.98px) {
+  .stat-card > i:first-child, .stat-card.accent-success > i:first-child, .stat-card.accent-warning > i:first-child,
+  .stat-card.accent-danger > i:first-child, .stat-card.accent-info > i:first-child { font-size: 4rem !important; width: auto; height: auto; margin: 0; bottom: -.8rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stat-card, .stat-card > i:first-child { transition: none; }
+  .stat-card:hover { transform: none; }
+  .stat-card:hover > i:first-child { transform: rotate(-12deg); }
+}
