@@ -2182,3 +2182,75 @@ a .stat-card, a.stat-card { cursor: pointer; }
   .stat-card:hover { transform: none; }
   .stat-card:hover > i:first-child { transform: rotate(-12deg); }
 }
+
+/* =====================================================================
+   v59 hover & motion: small, consistent feedback on everything clickable
+   ===================================================================== */
+/* Buttons: lift a little, soft shadow, press down on click; arrows nudge forward */
+.btn:not(.btn-link):not(.btn-close) { transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease, border-color .15s ease, color .15s ease; }
+.btn:not(.btn-link):not(.btn-close):not(:disabled):not(.disabled):hover { transform: translateY(-1px); box-shadow: 0 4px 12px -4px rgba(17,24,39,.22); }
+.btn-evora-primary:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 16px -6px rgba(79,70,229,.6); }
+.btn:not(.btn-link):not(.btn-close):active { transform: translateY(0) scale(.97); box-shadow: none; }
+.btn-group > .btn:hover, .btn-group-sm > .btn:hover, .input-group > .btn:hover, .dataTables_paginate .btn:hover { transform: none; }
+.btn .bi { transition: transform .2s ease; display: inline-block; }
+.btn:hover .bi-arrow-right, .btn:hover .bi-arrow-right-circle, .btn:hover .bi-chevron-right, .btn:hover .bi-box-arrow-up-right { transform: translateX(3px); }
+.btn:hover .bi-plus-circle, .btn:hover .bi-plus-lg, .btn:hover .bi-plus { transform: rotate(90deg); }
+.btn:hover .bi-download, .btn:hover .bi-file-earmark-excel, .btn:hover .bi-file-earmark-pdf { transform: translateY(2px); }
+.btn:hover .bi-printer, .btn:hover .bi-save, .btn:hover .bi-send { transform: scale(1.15); }
+/* Primary buttons: a light sweep crosses the button on hover */
+.btn-evora-primary { position: relative; overflow: hidden; }
+.btn-evora-primary:not(.dropdown-toggle)::after { content: ""; position: absolute; top: 0; left: -75%; width: 50%; height: 100%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.28), transparent); transform: skewX(-20deg); }
+.btn-evora-primary:not(.dropdown-toggle):not(:disabled):hover::after { left: 130%; transition: left .6s ease; }
+
+/* Event cards (with a banner): lift and slow zoom of the picture */
+.card-evora:has(> img:first-child), .card-evora:has(> .event-cover-placeholder:first-child) { overflow: hidden; transition: transform .2s ease, box-shadow .2s ease; }
+.card-evora:has(> img:first-child) > img:first-child, .card-evora > .event-cover-placeholder:first-child { transition: transform .5s ease; }
+.card-evora:has(> img:first-child):hover, .card-evora:has(> .event-cover-placeholder:first-child):hover { transform: translateY(-4px); box-shadow: var(--evora-shadow-md); }
+.card-evora:has(> img:first-child):hover > img:first-child, .card-evora:hover > .event-cover-placeholder:first-child { transform: scale(1.06); }
+/* Other cards: only a deeper shadow (they are not buttons) */
+.card-evora:hover { box-shadow: var(--evora-shadow-md); }
+
+/* Table rows: an accent line on the left of the hovered row */
+.table tbody tr > :first-child { transition: box-shadow .15s ease; }
+.table tbody tr:hover > :first-child { box-shadow: inset 3px 0 0 var(--evora-primary); }
+
+/* Sidebar: the icon slides a little toward the label */
+.evora-sidebar .nav-link:hover i { transform: translateX(3px); }
+
+/* Quick actions: the icon pops */
+.quick-action { transition: border-color .15s ease, box-shadow .15s ease, background .15s ease, transform .15s ease; }
+.quick-action:hover { transform: translateY(-2px); }
+.quick-action .qa-icon { transition: transform .25s ease; }
+.quick-action:hover .qa-icon { transform: scale(1.1) rotate(-6deg); }
+
+/* Lists and menus: the hovered item slides right */
+.list-group-item-action, .dropdown-item { transition: background-color .15s ease, color .15s ease, padding-left .15s ease; }
+.list-group-item-action:hover, .dropdown-menu:not(.notif-dropdown) .dropdown-item:hover { padding-left: 1.25rem; color: var(--evora-primary); }
+
+/* Top bar: the bell rings, the avatar gets a ring */
+.notif-bell:hover .bi-bell { display: inline-block; animation: evora-bell .6s ease; }
+@keyframes evora-bell { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(14deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(8deg); } 80% { transform: rotate(-4deg); } }
+.avatar, .account-toggle-btn img, .account-toggle-btn .rounded-circle { transition: transform .2s ease, box-shadow .2s ease; }
+.account-toggle-btn:hover img, .account-toggle-btn:hover .rounded-circle, a:hover > .avatar { transform: scale(1.06); box-shadow: 0 0 0 3px var(--evora-primary-soft); }
+.theme-toggle { transition: transform .3s ease, color .15s ease; }
+.theme-toggle:hover { transform: rotate(-15deg) scale(1.1); }
+
+/* Inputs: the border warms up before focus */
+.form-control:hover:not(:focus):not(:disabled), .form-select:hover:not(:focus):not(:disabled) { border-color: #a5b4fc; }
+[data-theme="dark"] .form-control:hover:not(:focus):not(:disabled), [data-theme="dark"] .form-select:hover:not(:focus):not(:disabled) { border-color: #6366f1; }
+
+/* Tabs and pills: the hovered tab lifts its color */
+.nav-tabs .nav-link, .nav-pills .nav-link { transition: color .15s ease, background-color .15s ease; }
+.nav-tabs .nav-link:hover:not(.active) { color: var(--evora-primary); }
+
+@media (hover: none) {
+  /* phones: no sticky hover states after a tap */
+  .btn:hover, .quick-action:hover, .card-evora:hover, .stat-card:hover { transform: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn, .btn .bi, .quick-action, .quick-action .qa-icon, .card-evora, .card-evora > img, .theme-toggle, .avatar { transition: none !important; }
+  .btn:hover, .quick-action:hover, .card-evora:hover, .theme-toggle:hover, .quick-action:hover .qa-icon { transform: none !important; }
+  .btn-evora-primary:not(.dropdown-toggle)::after { display: none; }
+  .notif-bell:hover .bi-bell { animation: none; }
+}
