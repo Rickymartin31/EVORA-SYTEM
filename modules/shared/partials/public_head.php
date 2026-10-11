@@ -27,5 +27,6 @@
     </div>
 </nav>
 <div class="container py-4">
+    <?= MaintenanceService::bannerHtml(true) ?>
     <?php if ($flashSuccess = flash('success')): ?><?= evoraAlert('success', e($flashSuccess), ['autohide' => 5000]) ?><?php endif; ?>
     <?php if ($flashError = flash('error')): ?><?= evoraAlert('error', e($flashError)) ?><?php endif; ?>

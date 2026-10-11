@@ -78,6 +78,7 @@ if ($role === 'staff') {
             <?= navLink('admin-refund-tracking', 'bi-arrow-counterclockwise', 'Refund Tracking', $activeRoute) ?>
             <div class="nav-section-title">System</div>
             <?= navLink('admin-settings', 'bi-sliders', 'System Settings', $activeRoute) ?>
+            <?= navLink('admin-maintenance', 'bi-tools', 'Maintenance Mode', $activeRoute) ?>
         <?php elseif ($role === 'organizer'): ?>
             <div class="nav-section-title">Overview</div>
             <?= navLink('organizer-dashboard', 'bi-speedometer2', 'Dashboard', $activeRoute) ?>

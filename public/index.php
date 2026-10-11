@@ -31,6 +31,7 @@ require_once EVORA_ROOT . '/core/EventDocumentsService.php';
 require_once EVORA_ROOT . '/core/PasswordResetService.php';
 require_once EVORA_ROOT . '/core/RefundTrackingService.php';
 require_once EVORA_ROOT . '/core/RaceTrackingService.php';
+require_once EVORA_ROOT . '/core/MaintenanceService.php';
 require_once EVORA_ROOT . '/core/LoginOtpService.php';
 require_once EVORA_ROOT . '/core/EmailVerificationService.php';
 require_once EVORA_ROOT . '/core/WaitlistService.php';
@@ -99,6 +100,7 @@ $router->get('admin-report-history', EVORA_ROOT . '/modules/admin/report_history
 
 // ---- Admin finance (legacy PayMongo pages removed; PayPal routes are below) ----
 $router->get('admin-logs', EVORA_ROOT . '/modules/admin/activity_logs.php');
+$router->get('admin-maintenance', EVORA_ROOT . '/modules/admin/maintenance.php');
 $router->get('admin-error-logs', EVORA_ROOT . '/modules/admin/error_logs.php');
 $router->get('admin-categories', EVORA_ROOT . '/modules/admin/categories_list.php');
 $router->get('admin-category-save', EVORA_ROOT . '/modules/admin/category_save.php');
@@ -255,4 +257,5 @@ $router->get('evaluate-save', EVORA_ROOT . '/modules/shared/evaluate_save.php');
 $router->get('evaluation-action', EVORA_ROOT . '/modules/shared/evaluation_action.php');
 
 $route = $_GET['route'] ?? 'home';
+MaintenanceService::guard($route); // v60: only administrators get past this while maintenance is on
 $router->dispatch($route);

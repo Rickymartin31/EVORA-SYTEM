@@ -37,9 +37,15 @@ require_once EVORA_ROOT . '/core/MailService.php';
 require_once EVORA_ROOT . '/core/WaitlistService.php';
 require_once EVORA_ROOT . '/core/ParticipantToolsService.php';
 require_once EVORA_ROOT . '/core/helpers.php';
+require_once EVORA_ROOT . '/core/MaintenanceService.php';
 
 $db = Database::connection();
 $completed = EventLifecycleService::autoCompletePastEvents($db);
+// v60: while EVORA is under maintenance participants cannot act, so nothing that needs them runs.
+if (MaintenanceService::isActive()) {
+    echo 'Maintenance mode is on: waitlist offers, reminders and unpaid closing are paused. Events completed: ' . count($completed) . "\n";
+    exit(0);
+}
 $expired = EventLifecycleService::expireUnpaidAfterEvent($db);
 $unpaidReminders = EventLifecycleService::remindUnpaid($db);
 $offers = WaitlistService::process($db);

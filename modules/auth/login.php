@@ -22,6 +22,7 @@ if (Auth::check()): redirect($next !== '' && Auth::role() === 'organizer' ? $nex
     <h3 class="fw-bold mb-1">EVO<span style="color:var(--evora-primary)">RA</span> Login</h3>
     <p class="text-muted small mb-4">Sign in to manage your events, staff, or registrations.</p>
 
+    <?= MaintenanceService::bannerHtml(true) ?>
     <?php if (!empty($_GET['expired'])): ?>
         <div class="alert alert-warning">Your session expired. Please log in again.</div>
     <?php endif; ?>

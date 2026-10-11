@@ -125,6 +125,7 @@ if (Auth::check()) {
         <?php /* Success: brief toast (4 s). Error: stays until the user closes it. */ ?>
         <?php if ($flashSuccess): ?><?= evoraAlert('success', e($flashSuccess), ['toast' => true]) ?><?php endif; ?>
         <?php if ($flashError): ?><?= evoraAlert('error', e($flashError)) ?><?php endif; ?>
+        <?= MaintenanceService::bannerHtml() ?>
         <?php if (!empty($pageDescription) || !empty($pageActions)): ?>
         <?php /* Page header: pages set $pageDescription (plain text) and optionally $pageActions (trusted HTML built by the page). */ ?>
         <div class="page-header">

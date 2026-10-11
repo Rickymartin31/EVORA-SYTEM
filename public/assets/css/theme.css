@@ -2254,3 +2254,18 @@ a .stat-card, a.stat-card { cursor: pointer; }
   .btn-evora-primary:not(.dropdown-toggle)::after { display: none; }
   .notif-bell:hover .bi-bell { animation: none; }
 }
+
+/* v60 maintenance */
+.maintenance-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem 1rem; background: var(--evora-bg, #f5f6fb); }
+.maintenance-card { width: 100%; max-width: 560px; text-align: center; background: var(--evora-surface, #fff); border: 1px solid var(--evora-border); border-radius: 1.25rem; padding: 2.5rem 1.75rem; box-shadow: var(--evora-shadow-md); }
+.maintenance-icon { width: 84px; height: 84px; margin: 0 auto 1.25rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 2.4rem; color: var(--evora-warning); background: var(--evora-warning-bg); animation: evora-wrench 2.4s ease-in-out infinite; }
+@keyframes evora-wrench { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(-14deg); } 30% { transform: rotate(10deg); } 45% { transform: rotate(0); } }
+.maintenance-points { max-width: 380px; }
+.maintenance-points li { display: flex; gap: .5rem; align-items: flex-start; margin-bottom: .45rem; color: var(--evora-text-muted); }
+.maintenance-points .bi { color: var(--evora-success); }
+.maintenance-status { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+.maintenance-status.is-on { background: var(--evora-warning-bg); color: var(--evora-warning); }
+.maintenance-status.is-scheduled { background: var(--evora-primary-soft); color: var(--evora-primary); }
+.maintenance-status.is-off { background: var(--evora-success-bg); color: var(--evora-success); }
+@media (prefers-reduced-motion: reduce) { .maintenance-icon { animation: none; } }
