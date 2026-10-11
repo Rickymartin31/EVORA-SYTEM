@@ -15,7 +15,7 @@ if (!Auth::check() || Auth::role() !== 'participant') {
     $respond(403, ['ok' => false, 'message' => 'Please log in as a participant.']);
 }
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !Csrf::verify($_POST['csrf_token'] ?? null)) {
-    $respond(419, ['ok' => false, 'message' => 'Your session expired. Please refresh the page.']);
+    $respond(403, ['ok' => false, 'message' => 'Your session expired. Please refresh the page.']);
 }
 
 $db = Database::connection();

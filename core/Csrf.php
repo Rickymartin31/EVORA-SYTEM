@@ -29,7 +29,7 @@ class Csrf
     {
         $token = $_POST['csrf_token'] ?? null;
         if (!self::verify($token)) {
-            http_response_code(419);
+            http_response_code(403); // not 419: Apache turns unknown codes into an empty 500
             die('Invalid or expired security token. Please go back and resubmit the form.');
         }
     }

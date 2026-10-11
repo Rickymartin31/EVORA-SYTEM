@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 if (!Csrf::verify($_POST['csrf_token'] ?? null)) {
-    http_response_code(419);
+    http_response_code(403); // not 419: Apache turns unknown codes into an empty 500
     echo json_encode(['error' => 'Invalid or expired security token. Refresh the page.']);
     exit;
 }
