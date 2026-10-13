@@ -2289,3 +2289,13 @@ a .stat-card, a.stat-card { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .back-link .bi, :is(.auth-card, .evora-content, .maintenance-card, .container) a { transition: none; }
 }
+
+/* v63 sign-up: choose Participant or Organizer */
+.account-type-switch { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding: .3rem; border-radius: 14px; background: var(--evora-primary-soft); }
+.account-type-option { display: flex; align-items: center; gap: .6rem; padding: .6rem .75rem; border-radius: 10px; color: var(--evora-text); text-decoration: none; border: 1px solid transparent; transition: background-color .15s ease, box-shadow .15s ease, color .15s ease; }
+.account-type-option .bi { font-size: 1.25rem; color: var(--evora-primary); }
+.account-type-option span { display: flex; flex-direction: column; line-height: 1.15; }
+.account-type-option small { color: var(--evora-text-muted); font-size: .75rem; }
+.account-type-option:hover { color: var(--evora-primary); background: rgba(255,255,255,.55); }
+.account-type-option.is-active { background: var(--evora-surface, #fff); border-color: var(--evora-border); box-shadow: var(--evora-shadow-sm); }
+[data-theme="dark"] .account-type-option:hover { background: rgba(255,255,255,.06); }

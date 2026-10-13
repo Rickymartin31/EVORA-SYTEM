@@ -153,7 +153,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="auth-shell">
 <div class="auth-card" style="max-width:620px;">
     <h3 class="fw-bold mb-1">Apply as Organizer</h3>
-    <p class="text-muted small mb-4">Submit your organization details and verification documents for admin review.</p>
+    <p class="text-muted small mb-3">Submit your organization details and verification documents for admin review.</p>
+    <?php $accountType = 'organizer'; include EVORA_ROOT . '/modules/auth/partials/account_type_switch.php'; ?>
 
     <?php if (!empty($errors)): ?>
         <div class="alert alert-danger"><ul class="mb-0"><?php foreach ($errors as $er): ?><li><?= e($er) ?></li><?php endforeach; ?></ul></div>

@@ -104,7 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="auth-shell">
 <div class="auth-card" style="max-width:520px;">
     <h3 class="fw-bold mb-1">Join EVORA</h3>
-    <p class="text-muted small mb-4">Create a participant account to browse and register for events.</p>
+    <p class="text-muted small mb-3">Create a participant account to browse and register for events.</p>
+    <?php $accountType = 'participant'; include EVORA_ROOT . '/modules/auth/partials/account_type_switch.php'; ?>
 
     <?php if (!empty($errors)): ?>
         <div class="alert alert-danger"><ul class="mb-0"><?php foreach ($errors as $er): ?><li><?= e($er) ?></li><?php endforeach; ?></ul></div>
@@ -130,13 +131,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label for="rpPhone"><i class="bi bi-telephone me-1"></i>Contact Number</label>
         </div>
         <div class="row">
-            <div class="col-6 mb-3">
+            <div class="col-sm-6 mb-3">
                 <div class="form-floating">
                     <input type="password" name="password" id="rpPassword" class="form-control" data-strength placeholder="Password" required minlength="8">
                     <label for="rpPassword">Password</label>
                 </div>
             </div>
-            <div class="col-6 mb-3">
+            <div class="col-sm-6 mb-3">
                 <div class="form-floating">
                     <input type="password" name="confirm_password" id="rpConfirm" class="form-control" data-match="#rpPassword" placeholder="Confirm Password" required minlength="8">
                     <label for="rpConfirm">Confirm Password</label>
