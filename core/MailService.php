@@ -77,14 +77,29 @@ class MailService
      * $attachments: list of ['name' => 'file.pdf', 'data' => bytes, 'mime' => 'application/pdf'].
      * Returns null on success, or a short safe error.
      */
+    /**
+     * False for addresses that can never receive mail (v66): not an email at all, or a reserved domain such as
+     * .invalid / .test / .local / example.com (used for placeholder and test accounts). Sending to them only
+     * bounces back to EVORA's own mailbox as "Address not found".
+     */
+    public static function deliverable(string $email): bool
+    {
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            return false;
+        }
+        $domain = strtolower(substr((string) strrchr($email, '@'), 1));
+
+        return !preg_match('/(^|\.)(invalid|test|example|localhost|local)$/', $domain) && !preg_match('/^example\.(com|net|org)$/', $domain);
+    }
+
     public static function send(string $toEmail, string $toName, string $subject, string $bodyText, array $attachments = []): ?string
     {
         $cfg = self::config();
         if (!$cfg['enabled']) {
             return 'Email is not configured.';
         }
-        if (filter_var($toEmail, FILTER_VALIDATE_EMAIL) === false) {
-            return 'Invalid recipient address.';
+        if (!self::deliverable($toEmail)) {
+            return 'Undeliverable recipient address.';
         }
         $body = $bodyText . "\n\n— " . $cfg['from_name'] . "\nThis is an automated message from EVORA. Please do not reply.";
 
@@ -132,8 +147,8 @@ class MailService
     /** Puts a notification email in the queue (no-op when email is off or the address is not deliverable). */
     public static function queue(PDO $db, int $userId, string $toEmail, string $subject, string $bodyText, ?int $notificationId = null, ?array $attachments = null): void
     {
-        if (!self::enabled() || filter_var($toEmail, FILTER_VALIDATE_EMAIL) === false) {
-            return;
+        if (!self::enabled() || !self::deliverable($toEmail)) {
+            return; // the in-app notification still reaches the user
         }
         $db->prepare('INSERT INTO email_queue (user_id, to_email, subject, body_text, attachments, notification_id) VALUES (:uid, :email, :subject, :body, :att, :nid)')
             ->execute(['uid' => $userId, 'email' => $toEmail, 'subject' => mb_substr($subject, 0, 200), 'body' => $bodyText, 'att' => $attachments ? json_encode($attachments) : null, 'nid' => $notificationId]);
