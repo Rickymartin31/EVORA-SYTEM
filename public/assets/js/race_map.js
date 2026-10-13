@@ -43,16 +43,52 @@
             L.circleMarker([c.lat, c.lng], { radius: 7, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1 })
                 .bindTooltip(esc(c.label)).addTo(cpLayer);
         });
-        var bounds = L.latLngBounds([]);
-        if (route.getLatLngs().length) { bounds.extend(route.getBounds()); }
-        checkpoints.forEach(function (c) { bounds.extend([c.lat, c.lng]); });
-        if (bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [24, 24], maxZoom: 17 });
-        } else {
-            map.setView([12.8797, 121.774], 6); // the Philippines
+        function fit() {
+            var bounds = L.latLngBounds([]);
+            if (route.getLatLngs().length) { bounds.extend(route.getBounds()); }
+            checkpoints.forEach(function (c) { bounds.extend([c.lat, c.lng]); });
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [24, 24], maxZoom: 17 });
+            } else {
+                map.setView([12.8797, 121.774], 6); // the Philippines
+            }
         }
-        el.addEventListener('click', function () { map.scrollWheelZoom.enable(); }, { once: true });
-        return { map: map, route: route, checkpoints: cpLayer };
+        fit();
+
+        // v67: scrolling the page never zooms the map (it used to after one click and lost the route);
+        // Ctrl/Cmd + scroll or the +/- buttons zoom, and a short hint says so.
+        var hint = L.DomUtil.create('div', 'race-map-hint', el);
+        hint.textContent = 'Use Ctrl + scroll to zoom the map';
+        var hintTimer = null;
+        el.addEventListener('wheel', function (e) {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                map.setZoom(map.getZoom() + (e.deltaY < 0 ? 1 : -1));
+                return;
+            }
+            el.classList.add('show-hint');
+            clearTimeout(hintTimer);
+            hintTimer = setTimeout(function () { el.classList.remove('show-hint'); }, 1300);
+        }, { passive: false });
+
+        // "Show the whole route" button under +/-.
+        var FitControl = L.Control.extend({
+            options: { position: 'topleft' },
+            onAdd: function () {
+                var bar = L.DomUtil.create('div', 'leaflet-bar race-map-fit');
+                var a = L.DomUtil.create('a', '', bar);
+                a.href = '#';
+                a.title = 'Show the whole route';
+                a.setAttribute('role', 'button');
+                a.setAttribute('aria-label', 'Show the whole route');
+                a.innerHTML = '<i class="bi bi-arrows-angle-contract" aria-hidden="true"></i>';
+                L.DomEvent.disableClickPropagation(bar);
+                L.DomEvent.on(a, 'click', function (e) { L.DomEvent.preventDefault(e); fit(); });
+                return bar;
+            }
+        });
+        map.addControl(new FitControl());
+        return { map: map, route: route, checkpoints: cpLayer, fit: fit };
     }
 
     window.EvoraRaceMap = { base: base, lengthOf: lengthOf, verdicts: VERDICTS, esc: esc };

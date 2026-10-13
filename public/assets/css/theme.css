@@ -2340,3 +2340,9 @@ a .stat-card:active, a.stat-card:active { transform: scale(.97) !important; filt
   color: var(--evora-text-muted); background: var(--evora-primary-soft); border: 1px solid var(--evora-border); }
 .auth-role-chips .bi { color: var(--evora-primary); }
 @media (prefers-reduced-motion: reduce) { .auth-floater { animation: none; transform: translate(-50%, -50%); } }
+
+/* v67 race map: zoom hint and "show the whole route" button */
+.race-map-hint { position: absolute; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; pointer-events: none;
+  background: rgba(17, 24, 39, .45); color: #fff; font-weight: 600; font-size: .95rem; opacity: 0; transition: opacity .2s ease; }
+.race-map.show-hint .race-map-hint { opacity: 1; }
+.race-map-fit a { display: flex !important; align-items: center; justify-content: center; font-size: 1rem; color: #333; }
