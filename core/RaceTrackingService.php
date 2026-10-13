@@ -24,6 +24,14 @@ class RaceTrackingService
     public const DISTANCE_RATIO_MIN = 0.85;
     /** A route sample counts as covered when a track point is this close. */
     public const COVER_RADIUS_M = 75;
+    /** Live alert when the latest position is this far from the route (v68). */
+    public const OFF_ROUTE_ALERT_M = 100;
+    /** A finished track that went this far from the route is flagged for review (v68). */
+    public const OFF_ROUTE_FLAG_M = 200;
+    public const GPX_MAX_BYTES = 15 * 1024 * 1024;
+    public const GPX_MAX_POINTS = 30000;
+    /** GPX files (Strava, watches) can be uploaded until this many days after the race. */
+    public const GPX_UPLOAD_DAYS = 3;
 
     // ------------------------------------------------------------------ geometry
 
@@ -67,6 +75,35 @@ class RaceTrackingService
         }
 
         return $out;
+    }
+
+    /** Shortest distance in metres from a point to a polyline [[lat,lng],...] (local flat projection, fine for a race course). */
+    public static function distanceToRoute(float $lat, float $lng, array $route): float
+    {
+        $n = count($route);
+        if ($n === 0) {
+            return INF;
+        }
+        $kx = 111320.0 * cos(deg2rad($lat));
+        $ky = 110540.0;
+        $best = INF;
+        for ($i = 0; $i < $n; $i++) {
+            $ax = ($route[$i][1] - $lng) * $kx;
+            $ay = ($route[$i][0] - $lat) * $ky;
+            if ($i === $n - 1) {
+                $best = min($best, hypot($ax, $ay));
+                break;
+            }
+            $bx = ($route[$i + 1][1] - $lng) * $kx;
+            $by = ($route[$i + 1][0] - $lat) * $ky;
+            $dx = $bx - $ax;
+            $dy = $by - $ay;
+            $len2 = $dx * $dx + $dy * $dy;
+            $t = $len2 > 0 ? max(0.0, min(1.0, -($ax * $dx + $ay * $dy) / $len2)) : 0.0;
+            $best = min($best, hypot($ax + $t * $dx, $ay + $t * $dy));
+        }
+
+        return $best;
     }
 
     private static function validLatLng($lat, $lng): bool
@@ -265,6 +302,45 @@ class RaceTrackingService
         $db->prepare('UPDATE race_tracks SET distance_m = :d, point_count = :c, last_lat = :lat, last_lng = :lng, last_accuracy_m = :acc, last_point_at = :at WHERE id = :id')
             ->execute(['d' => (int) round(self::pathLength($clean)), 'c' => (int) $count->fetchColumn(), 'lat' => $l['lat'] ?? null, 'lng' => $l['lng'] ?? null,
                 'acc' => $l['accuracy_m'] ?? null, 'at' => $l['recorded_at'] ?? null, 'id' => $trackId]);
+
+        // v68: how far from the route (latest and worst), and which mapped checkpoints were passed.
+        $eventStmt = $db->prepare('SELECT event_id FROM race_tracks WHERE id = :id');
+        $eventStmt->execute(['id' => $trackId]);
+        $eventId = (int) $eventStmt->fetchColumn();
+        $route = self::route($db, $eventId);
+        $off = null;
+        $maxOff = null;
+        if ($route && $clean) {
+            $maxOff = 0.0;
+            foreach ($clean as $p) {
+                $maxOff = max($maxOff, self::distanceToRoute($p[0], $p[1], $route['points']));
+            }
+            $lastClean = end($clean);
+            $off = self::distanceToRoute($lastClean[0], $lastClean[1], $route['points']);
+        }
+        $passed = 0;
+        $lastLabel = null;
+        // A finish line usually sits at the start: it only counts once most of the course is behind the runner.
+        $cum = [0.0];
+        for ($i = 1, $n = count($clean); $i < $n; $i++) {
+            $cum[$i] = $cum[$i - 1] + self::haversine($clean[$i - 1][0], $clean[$i - 1][1], $clean[$i][0], $clean[$i][1]);
+        }
+        $finishFrom = $route ? 0.7 * (int) $route['distance_m'] : 0.0;
+        foreach (self::mappedCheckpoints($db, $eventId) as $c) {
+            foreach ($clean as $i => $p) {
+                if ($c['checkpoint_type'] === 'finish' && $cum[$i] < $finishFrom) {
+                    continue;
+                }
+                if (self::haversine($c['lat_f'], $c['lng_f'], $p[0], $p[1]) <= (int) $c['radius_m'] + 30) {
+                    $passed++;
+                    $lastLabel = $c['label'];
+                    break;
+                }
+            }
+        }
+        $db->prepare('UPDATE race_tracks SET off_route_m = :o, max_off_route_m = :m, checkpoints_passed = :p, last_checkpoint = :l WHERE id = :id')
+            ->execute(['o' => $off === null ? null : min(65535, (int) round($off)), 'm' => $maxOff === null ? null : min(65535, (int) round($maxOff)),
+                'p' => min(255, $passed), 'l' => $lastLabel === null ? null : mb_substr($lastLabel, 0, 100), 'id' => $trackId]);
     }
 
     // ------------------------------------------------------------------ anti-shortcut check
@@ -315,6 +391,9 @@ class RaceTrackingService
                 if ($coverage < self::ROUTE_COVERAGE_MIN) {
                     $reasons[] = 'Covered only ' . round($coverage * 100) . '% of the route.';
                 }
+                if ((int) ($track['max_off_route_m'] ?? 0) > self::OFF_ROUTE_FLAG_M) {
+                    $reasons[] = 'Went up to ' . (int) $track['max_off_route_m'] . ' m off the route.';
+                }
                 $ran = self::pathLength(array_map(fn ($p) => [$p[0], $p[1]], $points));
                 if ($route['distance_m'] > 0 && $ran / $route['distance_m'] < self::DISTANCE_RATIO_MIN) {
                     $reasons[] = 'Ran ' . number_format($ran / 1000, 2) . ' km of the ' . number_format($route['distance_m'] / 1000, 2) . ' km route.';
@@ -336,13 +415,184 @@ class RaceTrackingService
     /** Every tracked runner of an event, for the live map and the list. */
     public static function liveRunners(PDO $db, int $eventId): array
     {
-        $stmt = $db->prepare('SELECT t.id, t.status, t.started_at, t.finished_at, t.last_lat, t.last_lng, t.last_accuracy_m, t.last_point_at, t.point_count, t.distance_m,
+        $stmt = $db->prepare('SELECT t.id, t.status, t.source, t.started_at, t.finished_at, t.last_lat, t.last_lng, t.last_accuracy_m, t.last_point_at, t.point_count, t.distance_m,
+                   t.off_route_m, t.max_off_route_m, t.checkpoints_passed, t.last_checkpoint,
+                   TIMESTAMPDIFF(SECOND, t.started_at, COALESCE(t.finished_at, NOW())) AS elapsed_s,
                    t.verdict, t.verdict_detail, r.bib_number, r.distance_category, u.full_name, TIMESTAMPDIFF(SECOND, t.last_point_at, NOW()) AS seconds_ago
             FROM race_tracks t JOIN registrations r ON r.id = t.registration_id JOIN participants p ON p.id = r.participant_id JOIN users u ON u.id = p.user_id
             WHERE t.event_id = :e ORDER BY t.status, u.full_name');
         $stmt->execute(['e' => $eventId]);
 
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Trails of every runner of an event (v68) for the live map: only the points added after $cursor
+     * (a race_track_points id), so each refresh stays small. The first load ($cursor = 0) is thinned to
+     * at most 300 points per runner. Returns ['trails' => [trackId => [[lat,lng],...]], 'cursor' => int].
+     */
+    public static function trails(PDO $db, int $eventId, int $cursor): array
+    {
+        $stmt = $db->prepare('SELECT p.id, p.track_id, p.lat, p.lng FROM race_track_points p JOIN race_tracks t ON t.id = p.track_id
+                              WHERE t.event_id = :e AND p.id > :c ORDER BY p.track_id, p.recorded_at');
+        $stmt->execute(['e' => $eventId, 'c' => $cursor]);
+        $byTrack = [];
+        $max = $cursor;
+        foreach ($stmt->fetchAll() as $r) {
+            $byTrack[(int) $r['track_id']][] = [(float) $r['lat'], (float) $r['lng']];
+            $max = max($max, (int) $r['id']);
+        }
+        if ($cursor === 0) {
+            foreach ($byTrack as $id => $pts) {
+                $n = count($pts);
+                if ($n > 300) {
+                    $step = $n / 300;
+                    $thin = [];
+                    for ($i = 0; $i < 299; $i++) {
+                        $thin[] = $pts[(int) floor($i * $step)];
+                    }
+                    $thin[] = $pts[$n - 1];
+                    $byTrack[$id] = $thin;
+                }
+            }
+        }
+
+        return ['trails' => (object) $byTrack, 'cursor' => $max];
+    }
+
+    // ------------------------------------------------------------------ GPX upload (Strava, sports watches)
+
+    /** Why a GPX file cannot be uploaded for this registration now, or null when it can. */
+    public static function gpxBlockedReason(array $reg): ?string
+    {
+        if ($reg['slug'] !== 'fun-run') {
+            return 'GPX upload is only for fun runs.';
+        }
+        if ($reg['status'] !== 'approved') {
+            return 'Your registration must be approved first.';
+        }
+        if (in_array($reg['event_status'], ['cancelled', 'removed', 'archived', 'draft', 'pending_approval'], true)) {
+            return 'This event is not running.';
+        }
+        $today = date('Y-m-d');
+        if ($today < $reg['event_date']) {
+            return 'You can upload your run from race day (' . date('M d, Y', strtotime($reg['event_date'])) . ').';
+        }
+        if ($today > date('Y-m-d', strtotime($reg['event_date'] . ' +' . self::GPX_UPLOAD_DAYS . ' days'))) {
+            return 'The upload period for this race has ended.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Reads a GPX file (Strava export, Garmin, Coros, ...) into [[lat, lng, unixTime], ...].
+     * Refuses DTDs/entities (XXE) and files without times. Throws DomainException with a readable message.
+     */
+    public static function parseGpx(string $xml): array
+    {
+        if (stripos($xml, '<!DOCTYPE') !== false || stripos($xml, '<!ENTITY') !== false) {
+            throw new DomainException('This GPX file cannot be read.');
+        }
+        $prev = libxml_use_internal_errors(true);
+        $doc = simplexml_load_string($xml, 'SimpleXMLElement', LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($prev);
+        if ($doc === false) {
+            throw new DomainException('This is not a valid GPX file.');
+        }
+        $nodes = $doc->xpath('//*[local-name()="trkpt"]') ?: [];
+        if (!$nodes) {
+            throw new DomainException('The file has no recorded track. Export the activity itself (not a planned route) as GPX.');
+        }
+        $tz = new DateTimeZone(date_default_timezone_get());
+        $points = [];
+        foreach ($nodes as $n) {
+            $lat = (string) ($n['lat'] ?? '');
+            $lng = (string) ($n['lon'] ?? '');
+            $time = $n->xpath('./*[local-name()="time"]');
+            if (!$time || !self::validLatLng($lat, $lng)) {
+                continue;
+            }
+            try {
+                $ts = (new DateTimeImmutable((string) $time[0]))->setTimezone($tz)->getTimestamp();
+            } catch (Exception $e) {
+                continue;
+            }
+            $points[] = [round((float) $lat, 6), round((float) $lng, 6), $ts];
+            if (count($points) > self::GPX_MAX_POINTS) {
+                throw new DomainException('The track is too long (more than ' . self::GPX_MAX_POINTS . ' points).');
+            }
+        }
+        if (count($points) < 10) {
+            throw new DomainException('The file has too few timed GPS points. Export the activity with its time data.');
+        }
+        usort($points, fn ($a, $b) => $a[2] <=> $b[2]);
+
+        return $points;
+    }
+
+    /**
+     * Stores an uploaded GPX run as the runner's finished track and checks it like a live track.
+     * $file is one $_FILES entry. Returns the track row.
+     */
+    public static function importGpx(PDO $db, array $reg, array $file, int $userId): array
+    {
+        if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) {
+            throw new DomainException('Please choose your GPX file.');
+        }
+        if ((int) $file['size'] > self::GPX_MAX_BYTES) {
+            throw new DomainException('The file is too large (15 MB at most).');
+        }
+        if (strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION)) !== 'gpx') {
+            throw new DomainException('Please upload a .gpx file.');
+        }
+        $points = self::parseGpx((string) file_get_contents($file['tmp_name']));
+        $firstDay = date('Y-m-d', $points[0][2]);
+        if ($firstDay < $reg['event_date'] || $firstDay > date('Y-m-d', strtotime($reg['event_date'] . ' +1 day'))) {
+            throw new DomainException('This run was recorded on ' . date('M d, Y', $points[0][2]) . ', not on race day (' . date('M d, Y', strtotime($reg['event_date'])) . ').');
+        }
+        $existing = self::trackFor($db, (int) $reg['id']);
+        if ($existing && (int) $existing['point_count'] >= 10) {
+            throw new DomainException('You already have a recorded run for this race.');
+        }
+
+        $dir = STORAGE_PATH . DIRECTORY_SEPARATOR . 'gpx';
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        $name = 'gpx_' . (int) $reg['id'] . '_' . bin2hex(random_bytes(6)) . '.gpx';
+        if (!move_uploaded_file($file['tmp_name'], $dir . DIRECTORY_SEPARATOR . $name)) {
+            throw new DomainException('The file could not be saved. Please try again.');
+        }
+
+        $db->beginTransaction();
+        try {
+            if ($existing) {
+                $db->prepare('DELETE FROM race_tracks WHERE id = :id')->execute(['id' => $existing['id']]); // an empty start, nothing recorded
+            }
+            $db->prepare('INSERT INTO race_tracks (registration_id, event_id, status, source, gpx_path, started_at, finished_at)
+                          VALUES (:r, :e, "finished", "gpx", :g, :s, :f)')
+                ->execute(['r' => $reg['id'], 'e' => $reg['event_id'], 'g' => 'gpx/' . $name,
+                    's' => date('Y-m-d H:i:s', $points[0][2]), 'f' => date('Y-m-d H:i:s', $points[count($points) - 1][2])]);
+            $trackId = (int) $db->lastInsertId();
+            $ins = $db->prepare('INSERT IGNORE INTO race_track_points (track_id, lat, lng, accuracy_m, recorded_at) VALUES (:t, :lat, :lng, NULL, :at)');
+            foreach ($points as [$lat, $lng, $ts]) {
+                $ins->execute(['t' => $trackId, 'lat' => $lat, 'lng' => $lng, 'at' => date('Y-m-d H:i:s', $ts)]);
+            }
+            $db->commit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            @unlink($dir . DIRECTORY_SEPARATOR . $name);
+            throw $e;
+        }
+        self::refresh($db, $trackId);
+        self::check($db, $trackId);
+        Logger::log($userId, 'race_gpx_uploaded', 'Uploaded a GPX run (' . count($points) . ' points) for registration #' . $reg['id']);
+
+        return self::trackFor($db, (int) $reg['id']);
     }
 
     /** One runner's full track as [[lat,lng],...] (only for a track of this event). */

@@ -159,6 +159,7 @@ $router->get('organizer-route-save', EVORA_ROOT . '/modules/organizer/route_save
 $router->get('organizer-race-live', EVORA_ROOT . '/modules/organizer/race_live.php');
 $router->get('race-tracker', EVORA_ROOT . '/modules/participant/race_tracker.php');
 $router->get('race-track-action', EVORA_ROOT . '/modules/participant/race_track_action.php');
+$router->get('race-track-gpx', EVORA_ROOT . '/modules/participant/race_track_gpx.php');
 $router->get('organizer-route-image-action', EVORA_ROOT . '/modules/organizer/route_image_action.php');
 $router->get('organizer-race-results', EVORA_ROOT . '/modules/organizer/race_results.php');
 $router->get('organizer-race-result-save', EVORA_ROOT . '/modules/organizer/race_result_save.php');

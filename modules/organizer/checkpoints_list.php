@@ -100,6 +100,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
             <strong data-rm="summary">Loading…</strong>
             <span class="text-muted ms-auto" data-rm="updated"></span>
         </div>
+        <div data-rm="alerts" aria-live="assertive"></div>
         <?php if (!$trackerOpen): ?>
             <div class="alert alert-info small py-2 mb-2">Runners can start the tracker on race day (<?= date('M d, Y', strtotime($event['event_date'])) ?>) from their registration. This list refreshes every 10 seconds.</div>
         <?php endif; ?>
@@ -112,11 +113,11 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
     <div data-rm-pane="live" class="d-none mt-3">
         <div class="table-responsive">
             <table class="table align-middle table-sm mb-0">
-                <thead><tr><th>Bib</th><th>Runner</th><th>Distance</th><th>Last GPS</th><th>Route check</th><th></th></tr></thead>
+                <thead><tr><th>#</th><th>Bib</th><th>Runner</th><th>Distance</th><th>Pace</th><th>Time</th><th>Checkpoints</th><th>Status</th><th></th></tr></thead>
                 <tbody data-rm="live-body"></tbody>
             </table>
         </div>
-        <div class="form-text">Phone GPS can be off by 10–30 m. A "Possible shortcut" is a flag to review, not an automatic disqualification.</div>
+        <div class="form-text">Refreshes every 10 seconds. A runner more than <?= RaceTrackingService::OFF_ROUTE_ALERT_M ?> m from the route turns red right away. Phone GPS can be off by 10–30 m, so "Off route" and "Possible shortcut" are flags to review, not automatic disqualification. Runners with Strava or a sports watch can upload a GPX file after the race.</div>
     </div>
 </div>
 

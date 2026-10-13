@@ -191,12 +191,22 @@
         pickMarker([+cpLat.value, +document.querySelector('[data-rm="cp-lng"]').value]);
     }
 
-    // ------------------------------------------------------------- live runners
+    // ------------------------------------------------------------- live runners (v68: Strava-like)
+    // Every runner has a coloured trail that grows with each refresh (only new points are fetched),
+    // a leaderboard with pace, time and checkpoints, and an alert as soon as someone leaves the route.
     var liveUrl = el.getAttribute('data-live-url');
     var runnerLayer = L.layerGroup().addTo(map);
+    var trailLayer = L.layerGroup().addTo(map);
     var trackLayer = L.layerGroup().addTo(map);
+    var COLORS = ['#0d6efd', '#6f42c1', '#20c997', '#d63384', '#0dcaf0', '#6610f2', '#198754', '#b45309'];
+    var trails = {};          // track id -> L.polyline
+    var cursor = 0;           // last race_track_points id already drawn
+    var offRouteSeen = {};    // track id -> true while it is off the route (to alert only once)
+    var focused = null;
     var timer = null;
     var fitted = false;
+
+    function colorOf(id) { return COLORS[id % COLORS.length]; }
 
     function showTab(live) {
         root.querySelectorAll('[data-rm-pane]').forEach(function (p) {
@@ -211,7 +221,11 @@
             timer = setInterval(function () { if (!document.hidden) { poll(); } }, 10000);
         } else {
             runnerLayer.clearLayers();
+            trailLayer.clearLayers();
             trackLayer.clearLayers();
+            trails = {};
+            cursor = 0;
+            fitted = false;
         }
         setTimeout(function () { map.invalidateSize(); }, 50);
     }
@@ -222,42 +236,113 @@
         if (s < 3600) { return Math.floor(s / 60) + ' min ago'; }
         return Math.floor(s / 3600) + ' h ago';
     }
+    function clock(s) {
+        if (s == null) { return '—'; }
+        var h = Math.floor(s / 3600), mnt = Math.floor(s / 60) % 60, sec = s % 60;
+        return (h ? h + ':' + String(mnt).padStart(2, '0') : mnt) + ':' + String(sec).padStart(2, '0');
+    }
+    function pace(r) {
+        if (!r.elapsed_s || r.distance_km < 0.05) { return '—'; }
+        var spk = Math.round(r.elapsed_s / r.distance_km);
+        return Math.floor(spk / 60) + ':' + String(spk % 60).padStart(2, '0') + ' /km';
+    }
 
     function poll() {
-        fetch(liveUrl, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        fetch(liveUrl + '&cursor=' + cursor, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
             .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
             .then(render)
             .catch(function () { if (q('updated')) { q('updated').textContent = 'Could not refresh. Retrying…'; } });
     }
 
+    function drawTrails(newPoints) {
+        Object.keys(newPoints || {}).forEach(function (id) {
+            var pts = newPoints[id];
+            if (!trails[id]) {
+                trails[id] = L.polyline([], { color: colorOf(+id), weight: 3, opacity: 0.8 }).addTo(trailLayer);
+            }
+            pts.forEach(function (p) { trails[id].addLatLng(p); });
+        });
+    }
+
     function render(data) {
+        drawTrails(data.trails);
+        cursor = data.cursor || cursor;
         runnerLayer.clearLayers();
-        var body = q('live-body');
-        var rows = [];
+        var limit = data.off_route_alert_m || 100;
+        var total = data.checkpoints_total || 0;
         var b = L.latLngBounds([]);
-        var counts = { running: 0, finished: 0, flagged: 0 };
-        data.runners.forEach(function (r) {
-            var v = r.status === 'active' ? VERDICTS.pending : (VERDICTS[r.verdict] || VERDICTS.pending);
-            if (r.status === 'active') { counts.running++; } else { counts.finished++; }
+        var counts = { running: 0, off: 0, finished: 0, flagged: 0 };
+        var alerts = [];
+
+        // Finished runners by time, then runners still out there by distance.
+        var list = data.runners.slice().sort(function (a, z) {
+            if (a.status !== z.status) { return a.status === 'finished' ? -1 : 1; }
+            return a.status === 'finished' ? (a.elapsed_s || 0) - (z.elapsed_s || 0) : z.distance_km - a.distance_km;
+        });
+        var rows = list.map(function (r, i) {
+            var active = r.status === 'active';
+            var stale = active && (r.seconds_ago == null || r.seconds_ago > 120);
+            var off = active && !stale && r.off_route_m != null && r.off_route_m >= limit;
+            if (active) { counts.running++; } else { counts.finished++; }
+            if (off) {
+                counts.off++;
+                alerts.push(r);
+                if (!offRouteSeen[r.id] && window.evoraHaptic) { window.evoraHaptic([60, 40, 60]); }
+                offRouteSeen[r.id] = true;
+            } else {
+                delete offRouteSeen[r.id];
+            }
             if (r.verdict === 'possible_shortcut') { counts.flagged++; }
-            var stale = r.status === 'active' && (r.seconds_ago == null || r.seconds_ago > 120);
+
+            var badge;
+            if (off) { badge = '<span class="badge bg-danger">Off route · ' + r.off_route_m + ' m</span>'; }
+            else if (stale) { badge = '<span class="badge bg-secondary">No signal</span>'; }
+            else if (active) { badge = '<span class="badge bg-primary">Running</span>'; }
+            else { var v = VERDICTS[r.verdict] || VERDICTS.pending; badge = '<span class="badge ' + v[1] + '">' + v[0] + '</span>'; }
+            if (r.source === 'gpx') { badge += ' <span class="badge text-bg-light border" title="Uploaded GPX file (Strava / watch)">GPX</span>'; }
+
             if (r.lat != null) {
-                var color = r.status === 'finished' ? (r.verdict === 'possible_shortcut' ? '#fd7e14' : '#198754') : (stale ? '#adb5bd' : '#0d6efd');
+                var color = off ? '#dc3545' : (active ? (stale ? '#adb5bd' : colorOf(r.id)) : (r.verdict === 'possible_shortcut' ? '#fd7e14' : '#198754'));
                 L.marker([r.lat, r.lng], {
-                    icon: L.divIcon({ className: 'race-runner', html: '<span style="background:' + color + '">' + esc(r.bib || '•') + '</span>', iconSize: [30, 30], iconAnchor: [15, 15] })
-                }).bindTooltip(esc(r.name) + ' · ' + r.distance_km.toFixed(2) + ' km · ' + ago(r.seconds_ago)).addTo(runnerLayer);
+                    zIndexOffset: off ? 1000 : 0,
+                    icon: L.divIcon({ className: 'race-runner' + (off ? ' is-off-route' : ''), html: '<span style="background:' + color + '">' + esc(r.bib || '•') + '</span>', iconSize: [30, 30], iconAnchor: [15, 15] })
+                }).bindTooltip(esc(r.name) + ' · ' + r.distance_km.toFixed(2) + ' km · ' + pace(r) + ' · ' + ago(r.seconds_ago)).addTo(runnerLayer);
                 b.extend([r.lat, r.lng]);
             }
-            rows.push('<tr><td>' + esc(r.bib || '—') + '</td><td>' + esc(r.name) + (r.category ? '<div class="small text-muted">' + esc(r.category) + '</div>' : '') + '</td>'
-                + '<td>' + r.distance_km.toFixed(2) + ' km</td>'
-                + '<td class="small">' + (stale ? '<span class="text-danger">' : '<span>') + ago(r.seconds_ago) + '</span></td>'
-                + '<td><span class="badge ' + v[1] + '">' + v[0] + '</span>' + (r.status === 'finished' && r.detail ? '<div class="small text-muted mt-1">' + esc(r.detail) + '</div>' : '') + '</td>'
-                + '<td><button type="button" class="btn btn-sm btn-outline-secondary" data-rm="show-track" data-track="' + r.id + '" data-name="' + esc(r.name) + '"' + (r.points ? '' : ' disabled') + '>Path</button></td></tr>');
+            if (trails[r.id]) {
+                trails[r.id].setStyle({ color: off ? '#dc3545' : colorOf(r.id), weight: focused === r.id ? 6 : 3, opacity: focused && focused !== r.id ? 0.35 : 0.85 });
+            }
+
+            var cps = total ? r.checkpoints_passed + '/' + total + (r.last_checkpoint ? '<div class="small text-muted">' + esc(r.last_checkpoint) + '</div>' : '') : '—';
+            return '<tr' + (off ? ' class="table-danger"' : '') + '>'
+                + '<td class="fw-semibold">' + (i + 1) + '</td>'
+                + '<td class="text-nowrap"><span class="race-dot" style="background:' + colorOf(r.id) + '"></span>' + esc(r.bib || '—') + '</td>'
+                + '<td>' + esc(r.name) + (r.category ? '<div class="small text-muted">' + esc(r.category) + '</div>' : '') + '</td>'
+                + '<td class="text-nowrap">' + r.distance_km.toFixed(2) + ' km</td>'
+                + '<td class="text-nowrap">' + pace(r) + '</td>'
+                + '<td class="text-nowrap">' + clock(r.elapsed_s) + '<div class="small text-muted">' + (active ? ago(r.seconds_ago) : 'finished') + '</div></td>'
+                + '<td>' + cps + '</td>'
+                + '<td>' + badge + (!active && r.detail ? '<div class="small text-muted mt-1">' + esc(r.detail) + '</div>' : '') + '</td>'
+                + '<td><button type="button" class="btn btn-sm ' + (focused === r.id ? 'btn-primary' : 'btn-outline-secondary') + '" data-rm="show-track" data-track="' + r.id + '" data-name="' + esc(r.name) + '"' + (r.points ? '' : ' disabled') + '>' + (focused === r.id ? 'Focused' : 'Focus') + '</button></td></tr>';
         });
+
+        var body = q('live-body');
         if (body) {
-            body.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="6" class="text-center text-muted small py-4">No runner has started tracking yet. Runners open the tracker from their registration on race day.</td></tr>';
+            body.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="9" class="text-center text-muted small py-4">No runner has started tracking yet. Runners open the tracker from their registration on race day, or upload a GPX file after the race.</td></tr>';
         }
-        if (q('summary')) { q('summary').textContent = counts.running + ' running · ' + counts.finished + ' finished · ' + counts.flagged + ' flagged'; }
+        var box = q('alerts');
+        if (box) {
+            box.innerHTML = alerts.map(function (r) {
+                return '<div class="alert alert-danger py-2 px-3 mb-2 small d-flex align-items-center gap-2" role="alert"><i class="bi bi-exclamation-triangle-fill"></i>'
+                    + '<span><strong>' + esc(r.bib ? 'Bib ' + r.bib + ' · ' : '') + esc(r.name) + '</strong> is ' + r.off_route_m + ' m off the route'
+                    + (r.last_checkpoint ? ' (last checkpoint: ' + esc(r.last_checkpoint) + ')' : '') + '.</span>'
+                    + '<button type="button" class="btn btn-sm btn-outline-danger ms-auto" data-rm="show-track" data-track="' + r.id + '" data-name="' + esc(r.name) + '">Show</button></div>';
+            }).join('');
+        }
+        if (q('summary')) {
+            q('summary').innerHTML = counts.running + ' running · <span class="' + (counts.off ? 'text-danger' : '') + '">' + counts.off + ' off route</span> · '
+                + counts.finished + ' finished · ' + counts.flagged + ' flagged';
+        }
         if (q('updated')) { q('updated').textContent = 'Updated ' + data.updated; }
         if (!fitted && b.isValid()) {
             map.fitBounds(b.extend(m.route.getBounds().isValid() ? m.route.getBounds() : b), { padding: [30, 30], maxZoom: 17 });
@@ -265,14 +350,30 @@
         }
     }
 
+    // "Focus": highlight one runner's trail and zoom to it; click again to show everyone.
     function showTrack(id, name) {
+        if (focused === id) {
+            focused = null;
+            m.fit();
+            poll();
+            return;
+        }
+        focused = id;
+        var line = trails[id];
+        if (line && line.getLatLngs().length) {
+            line.bringToFront();
+            map.fitBounds(line.getBounds(), { padding: [30, 30], maxZoom: 17 });
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            poll();
+            return;
+        }
         fetch(liveUrl + '&track=' + id, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 trackLayer.clearLayers();
                 if (!d.path || !d.path.length) { return; }
-                var line = L.polyline(d.path, { color: '#fd7e14', weight: 4, dashArray: '6 6' }).bindTooltip(esc(name) + "'s path").addTo(trackLayer);
-                map.fitBounds(line.getBounds(), { padding: [30, 30], maxZoom: 17 });
+                var full = L.polyline(d.path, { color: '#fd7e14', weight: 5 }).bindTooltip(esc(name) + "'s path").addTo(trackLayer);
+                map.fitBounds(full.getBounds(), { padding: [30, 30], maxZoom: 17 });
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             });
     }

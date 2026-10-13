@@ -25,8 +25,15 @@ if (isset($_GET['track'])) {
     echo json_encode(['path' => RaceTrackingService::trackPath($db, $eventId, (int) $_GET['track'])]);
     exit;
 }
+// v68: progress against the mapped checkpoints, off-route distance, pace, and only the new trail points.
+$totalCheckpoints = count(RaceTrackingService::mappedCheckpoints($db, $eventId));
+$trails = RaceTrackingService::trails($db, $eventId, max(0, (int) ($_GET['cursor'] ?? 0)));
 echo json_encode([
     'updated' => date('g:i:s A'),
+    'off_route_alert_m' => RaceTrackingService::OFF_ROUTE_ALERT_M,
+    'checkpoints_total' => $totalCheckpoints,
+    'cursor' => $trails['cursor'],
+    'trails' => $trails['trails'],
     'runners' => array_map(fn ($r) => [
         'id' => (int) $r['id'],
         'name' => $r['full_name'],
@@ -39,6 +46,12 @@ echo json_encode([
         'seconds_ago' => $r['seconds_ago'] !== null ? (int) $r['seconds_ago'] : null,
         'distance_km' => round((int) $r['distance_m'] / 1000, 2),
         'points' => (int) $r['point_count'],
+        'source' => $r['source'],
+        'elapsed_s' => $r['elapsed_s'] !== null ? (int) $r['elapsed_s'] : null,
+        'off_route_m' => $r['off_route_m'] !== null ? (int) $r['off_route_m'] : null,
+        'max_off_route_m' => $r['max_off_route_m'] !== null ? (int) $r['max_off_route_m'] : null,
+        'checkpoints_passed' => (int) $r['checkpoints_passed'],
+        'last_checkpoint' => $r['last_checkpoint'],
         'verdict' => $r['verdict'],
         'detail' => $r['verdict_detail'],
     ], RaceTrackingService::liveRunners($db, $eventId)),

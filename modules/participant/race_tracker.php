@@ -16,6 +16,7 @@ if (!$check['reg']) {
 $reg = $check['reg'];
 $track = RaceTrackingService::trackFor($db, $registrationId);
 $route = RaceTrackingService::route($db, (int) $reg['event_id']);
+$gpxWhy = RaceTrackingService::gpxBlockedReason($reg); // v68: Strava / watch upload
 $checkpoints = array_map(fn ($c) => ['label' => $c['label'], 'type' => $c['checkpoint_type'], 'lat' => $c['lat_f'], 'lng' => $c['lng_f'], 'radius' => (int) $c['radius_m']],
     RaceTrackingService::mappedCheckpoints($db, (int) $reg['event_id']));
 
@@ -57,7 +58,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
 
             <?php if ($track && $track['status'] === 'finished'): ?>
                 <?php [$vLabel, $vBadge] = $verdictLabels[$track['verdict']] ?? $verdictLabels['pending']; ?>
-                <div class="alert alert-success small mb-3"><i class="bi bi-flag-fill me-1"></i> You finished. Your track was saved.</div>
+                <div class="alert alert-success small mb-3"><i class="bi bi-flag-fill me-1"></i> <?= ($track['source'] ?? 'live') === 'gpx' ? 'Your run was uploaded from a GPX file (Strava or a sports watch).' : 'You finished. Your track was saved.' ?></div>
                 <div class="row text-center g-2 mb-3">
                     <div class="col-6"><div class="race-stat"><div class="race-stat-value"><?= number_format((int) $track['distance_m'] / 1000, 2) ?></div><div class="race-stat-label">km</div></div></div>
                     <div class="col-6"><div class="race-stat"><div class="race-stat-value"><?= gmdate('H:i:s', max(0, strtotime((string) $track['finished_at']) - strtotime($track['started_at']))) ?></div><div class="race-stat-label">time</div></div></div>
@@ -84,6 +85,27 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                 </ul>
             <?php endif; ?>
         </div>
+        <?php if ((!$track || (int) $track['point_count'] < 10) && $gpxWhy === null): ?>
+        <div class="card-evora p-4 mt-3">
+            <h6 class="fw-semibold mb-1"><i class="bi bi-smartwatch me-1"></i> Ran with Strava or a sports watch?</h6>
+            <p class="small text-muted mb-3">Upload the GPX file of your run instead of using this tracker. It is checked against the route the same way.</p>
+            <form method="post" action="<?= url('race-track-gpx') ?>" enctype="multipart/form-data" class="d-flex flex-column gap-2">
+                <?= Csrf::field() ?>
+                <input type="hidden" name="registration_id" value="<?= $registrationId ?>">
+                <input type="file" name="gpx" accept=".gpx,application/gpx+xml" class="form-control" required aria-label="GPX file">
+                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-upload"></i> Upload GPX</button>
+            </form>
+            <details class="small text-muted mt-3">
+                <summary>How to get the GPX file</summary>
+                <ul class="mt-2 mb-0 ps-3">
+                    <li><strong>Strava:</strong> open the activity on strava.com, then <em>⋯ → Export GPX</em>.</li>
+                    <li><strong>Garmin Connect:</strong> activity → gear icon → <em>Export to GPX</em>.</li>
+                    <li><strong>Other watches:</strong> look for <em>Export</em> or <em>Share → GPX</em> in the app.</li>
+                    <li>Upload until <?= date('M d, Y', strtotime($reg['event_date'] . ' +' . RaceTrackingService::GPX_UPLOAD_DAYS . ' days')) ?>. The run must be recorded on race day.</li>
+                </ul>
+            </details>
+        </div>
+        <?php endif; ?>
     </div>
     <div class="col-lg-7">
         <div class="card-evora p-2">
