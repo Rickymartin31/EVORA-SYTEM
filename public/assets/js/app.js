@@ -1151,8 +1151,6 @@ document.querySelectorAll('[data-dismiss-key]').forEach(function (card) {
         }).observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class'] });
     }
 
-    if (reduced) { return; }
-
     // ---- ripple from the exact point that was tapped or clicked
     var RIPPLE = '.btn:not(.btn-link):not(.btn-close), .quick-action, .bottom-nav a, .list-group-item-action, .account-type-option, .event-type-card, .back-link, .evora-sidebar .nav-link';
     document.addEventListener('pointerdown', function (ev) {
@@ -1177,6 +1175,9 @@ document.querySelectorAll('[data-dismiss-key]').forEach(function (card) {
         host.appendChild(dot);
         dot.addEventListener('animationend', function () { dot.remove(); });
     }, { passive: true });
+
+    // Press feedback and ripple stay on with reduced motion (they answer a tap); the rest is decoration.
+    if (reduced) { return; }
 
     // ---- count-up for dashboard numbers
     function countUp(el) {

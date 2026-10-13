@@ -2314,6 +2314,6 @@ a .stat-card:active, a.stat-card:active { transform: scale(.97) !important; filt
 @keyframes evora-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @media print { .reveal-wait { opacity: 1 !important; } }
 @media (prefers-reduced-motion: reduce) {
-  .reveal-wait { opacity: 1 !important; } .reveal-in { animation: none !important; } .ripple-host { display: none; }
-  .quick-action:active, .bottom-nav a:active, .btn:active, .card-evora:active { transform: none !important; }
+  .reveal-wait { opacity: 1 !important; } .reveal-in { animation: none !important; }
+  .ripple { animation-duration: .45s !important; } /* tap feedback stays, unlike decoration */
 }
