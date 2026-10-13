@@ -2299,3 +2299,21 @@ a .stat-card, a.stat-card { cursor: pointer; }
 .account-type-option:hover { color: var(--evora-primary); background: rgba(255,255,255,.55); }
 .account-type-option.is-active { background: var(--evora-surface, #fff); border-color: var(--evora-border); box-shadow: var(--evora-shadow-sm); }
 [data-theme="dark"] .account-type-option:hover { background: rgba(255,255,255,.06); }
+
+/* v64 touch feel: press, ripple, rise-in */
+.btn:not(.btn-link):not(.btn-close), .quick-action, .bottom-nav a, .list-group-item-action, .account-type-option, .event-type-card, .back-link, .evora-sidebar .nav-link { -webkit-tap-highlight-color: transparent; }
+.quick-action:active, .bottom-nav a:active, .list-group-item-action:active, .account-type-option:active, .event-type-card:active, .back-link:active,
+a .stat-card:active, a.stat-card:active { transform: scale(.97) !important; filter: brightness(.97); transition-duration: .08s; }
+.card-evora:has(> img:first-child):active, .card-evora:has(> .event-cover-placeholder:first-child):active { transform: scale(.985) !important; transition-duration: .08s; }
+.btn:not(.btn-link):not(.btn-close):not(:disabled):active { transform: scale(.96) !important; filter: brightness(.95); }
+.ripple-host { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; }
+.ripple { position: absolute; border-radius: 50%; background: currentColor; opacity: .28; transform: scale(0); animation: evora-ripple .55s ease-out forwards; pointer-events: none; }
+@keyframes evora-ripple { to { transform: scale(1); opacity: 0; } }
+.reveal-wait { opacity: 0; }
+.reveal-in { animation: evora-rise .5s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes evora-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@media print { .reveal-wait { opacity: 1 !important; } }
+@media (prefers-reduced-motion: reduce) {
+  .reveal-wait { opacity: 1 !important; } .reveal-in { animation: none !important; } .ripple-host { display: none; }
+  .quick-action:active, .bottom-nav a:active, .btn:active, .card-evora:active { transform: none !important; }
+}

@@ -1111,3 +1111,128 @@ document.querySelectorAll('[data-dismiss-key]').forEach(function (card) {
     setInterval(refresh, 30000);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
 })();
+
+// =====================================================================
+// v64 touch feel: ripple on tap, cards that rise in as you scroll, numbers that count up,
+// and a short vibration when a QR code is scanned (Android). All of it is skipped when the
+// device asks for reduced motion.
+// =====================================================================
+(function () {
+    'use strict';
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ---- haptics: one short buzz per new code; success / problem patterns on the check-in result
+    function buzz(pattern) {
+        try { if (navigator.vibrate) { navigator.vibrate(pattern); } } catch (e) { /* not supported */ }
+    }
+    window.evoraHaptic = buzz;
+    if (window.Html5Qrcode && !window.Html5Qrcode.prototype.__evoraHaptic) {
+        var start = window.Html5Qrcode.prototype.start;
+        var lastText = '', lastAt = 0;
+        window.Html5Qrcode.prototype.start = function (camera, config, onSuccess, onError) {
+            var wrapped = typeof onSuccess === 'function' ? function (text) {
+                var now = Date.now();
+                if (text !== lastText || now - lastAt > 2500) { buzz(30); }
+                lastText = text; lastAt = now;
+                return onSuccess.apply(this, arguments);
+            } : onSuccess;
+            return start.call(this, camera, config, wrapped, onError);
+        };
+        window.Html5Qrcode.prototype.__evoraHaptic = true;
+    }
+    if (window.MutationObserver) {
+        new MutationObserver(function (records) {
+            records.forEach(function (r) {
+                var t = r.target;
+                if (r.attributeName !== 'class' || !t.classList || !t.classList.contains('scan-result')) { return; }
+                if (t.classList.contains('is-success')) { buzz([40, 60, 40]); }
+                else if (t.classList.contains('is-danger')) { buzz([120, 80, 120]); }
+            });
+        }).observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class'] });
+    }
+
+    if (reduced) { return; }
+
+    // ---- ripple from the exact point that was tapped or clicked
+    var RIPPLE = '.btn:not(.btn-link):not(.btn-close), .quick-action, .bottom-nav a, .list-group-item-action, .account-type-option, .event-type-card, .back-link, .evora-sidebar .nav-link';
+    document.addEventListener('pointerdown', function (ev) {
+        if (ev.button !== 0) { return; }
+        var el = ev.target.closest(RIPPLE);
+        if (!el || el.disabled || el.classList.contains('disabled')) { return; }
+        if (getComputedStyle(el).position === 'static') { el.style.position = 'relative'; }
+        var host = el.querySelector(':scope > .ripple-host');
+        if (!host) {
+            host = document.createElement('span');
+            host.className = 'ripple-host';
+            host.setAttribute('aria-hidden', 'true');
+            el.appendChild(host);
+        }
+        var box = el.getBoundingClientRect();
+        var size = Math.max(box.width, box.height) * 2;
+        var dot = document.createElement('span');
+        dot.className = 'ripple';
+        dot.style.width = dot.style.height = size + 'px';
+        dot.style.left = (ev.clientX - box.left - size / 2) + 'px';
+        dot.style.top = (ev.clientY - box.top - size / 2) + 'px';
+        host.appendChild(dot);
+        dot.addEventListener('animationend', function () { dot.remove(); });
+    }, { passive: true });
+
+    // ---- count-up for dashboard numbers
+    function countUp(el) {
+        var text = el.textContent.trim();
+        var m = text.match(/^([^\d-]*)(-?[\d,]*\.?\d+)(.*)$/);
+        if (!m) { return; }
+        var raw = m[2], target = parseFloat(raw.replace(/,/g, ''));
+        if (!isFinite(target) || target === 0) { return; }
+        var decimals = (raw.split('.')[1] || '').length, commas = raw.indexOf(',') !== -1 || Math.abs(target) >= 1000;
+        var fmt = function (n) {
+            return m[1] + n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals, useGrouping: commas }) + m[3];
+        };
+        var t0 = null, dur = 800;
+        el.setAttribute('aria-label', text);
+        (function step(ts) {
+            if (t0 === null) { t0 = ts; }
+            var p = Math.min(1, (ts - t0) / dur), eased = 1 - Math.pow(1 - p, 3);
+            el.textContent = p < 1 ? fmt(target * eased) : text;
+            if (p < 1) { requestAnimationFrame(step); } else { el.removeAttribute('aria-label'); }
+        })(performance.now());
+    }
+
+    // ---- cards rise in: the first screen one by one, the rest as they scroll into view
+    var REVEAL = '.evora-content .card-evora, .evora-content .stat-card, .evora-content .quick-action, .evora-content .event-type-card';
+    var items = Array.prototype.filter.call(document.querySelectorAll(REVEAL), function (el) {
+        return !el.closest('.modal, .dropdown-menu, .offcanvas, [data-no-reveal]') && el.parentElement.closest(REVEAL) === null;
+    });
+    if (!('IntersectionObserver' in window) || !items.length) { return; }
+    var shown = 0;
+    function reveal(el, delay) {
+        el.style.animationDelay = delay + 'ms';
+        el.classList.remove('reveal-wait');
+        el.classList.add('reveal-in');
+        el.addEventListener('animationend', function done(e) {
+            if (e.target !== el) { return; }
+            el.classList.remove('reveal-in');
+            el.style.animationDelay = '';
+            el.removeEventListener('animationend', done);
+        });
+        el.querySelectorAll('.stat-value').forEach(function (v) { setTimeout(function () { countUp(v); }, delay); });
+    }
+    var io = new IntersectionObserver(function (entries) {
+        var batch = 0;
+        entries.forEach(function (en) {
+            if (!en.isIntersecting) { return; }
+            io.unobserve(en.target);
+            reveal(en.target, Math.min(batch++, 5) * 70);
+        });
+    }, { rootMargin: '0px 0px -40px 0px', threshold: 0.08 });
+    items.forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        if (r.top < window.innerHeight && r.bottom > 0) {
+            reveal(el, Math.min(shown++, 8) * 60);
+        } else {
+            el.classList.add('reveal-wait');
+            io.observe(el);
+        }
+    });
+})();
