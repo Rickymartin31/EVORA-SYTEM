@@ -93,6 +93,23 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                 <button type="submit" class="btn btn-sm btn-evora-primary" data-rm="save"><i class="bi bi-save"></i> Save Route</button>
             </form>
         </div>
+        <div class="race-quick d-flex flex-wrap gap-2 align-items-center mb-2" role="group" aria-label="Add checkpoints on the map">
+            <span class="small fw-semibold text-muted"><i class="bi bi-lightning-charge"></i> Quick setup:</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-rm="auto-sf"><i class="bi bi-magic"></i> Auto Start/Finish</button>
+            <div class="input-group input-group-sm w-auto">
+                <button type="button" class="btn btn-outline-info" data-rm="water-every"><i class="bi bi-droplet-fill"></i> Water every</button>
+                <input type="number" class="form-control" data-rm="water-km" value="2" min="0.5" max="20" step="0.5" style="width:4.5rem" aria-label="Kilometres between water stations">
+                <span class="input-group-text">km</span>
+            </div>
+            <span class="small text-muted ms-2">or add on the map:</span>
+            <button type="button" class="btn btn-sm btn-outline-success" data-rm="add" data-type="start"><i class="bi bi-flag-fill"></i> Start</button>
+            <button type="button" class="btn btn-sm btn-outline-info" data-rm="add" data-type="water_station"><i class="bi bi-droplet-fill"></i> Water</button>
+            <button type="button" class="btn btn-sm btn-outline-warning" data-rm="add" data-type="medical_station"><i class="bi bi-plus-lg"></i> Medical</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-rm="add" data-type="checkpoint"><i class="bi bi-stopwatch"></i> Checkpoint</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-rm="add" data-type="turnaround_point"><i class="bi bi-arrow-repeat"></i> Turn-around</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-rm="add" data-type="finish"><i class="bi bi-flag-fill"></i> Finish</button>
+            <span class="small ms-auto" data-rm="quick-status" aria-live="polite"></span>
+        </div>
         <div class="small text-muted mb-2" data-rm="hint" aria-live="polite"></div>
     </div>
     <div data-rm-pane="live" class="d-none">
@@ -108,7 +125,9 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
     <div id="raceMap" class="race-map"
          data-route="<?= e(json_encode($routePath['points'] ?? [])) ?>"
          data-checkpoints="<?= e(json_encode($mapCheckpoints)) ?>"
-         data-live-url="<?= e(url('organizer-race-live', ['event_id' => $eventId])) ?>"></div>
+         data-live-url="<?= e(url('organizer-race-live', ['event_id' => $eventId])) ?>"
+         data-editor-url="<?= e(url('organizer-checkpoint-map')) ?>" data-csrf="<?= e(Csrf::token()) ?>" data-event-id="<?= $eventId ?>"
+         data-cp-list="<?= e(json_encode(RaceTrackingService::checkpointsForMap($db, $eventId))) ?>"></div>
     <div data-rm-pane="route" class="form-text">Draw the official course in running order, then give each checkpoint a map position (use <strong>Pick on map</strong> in the checkpoint form). Runners who skip a checkpoint or a big part of the course are flagged for your review.</div>
     <div data-rm-pane="live" class="d-none mt-3">
         <div class="table-responsive">

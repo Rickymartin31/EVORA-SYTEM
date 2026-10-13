@@ -126,8 +126,10 @@
         }
         if (q('hint')) {
             q('hint').textContent = mode === 'draw' ? 'Tap the map along the course, in running order. Zoom in for curves.'
-                : mode === 'pick' ? 'Tap the map where this checkpoint is.' : '';
+                : mode === 'pick' ? 'Tap the map where this checkpoint is.'
+                : mode === 'add' ? 'Click the map to place a ' + (TYPE_NAMES[addType] || 'checkpoint') + '. Click the button again or press Esc to stop.' : '';
         }
+        root.querySelectorAll('[data-rm="add"]').forEach(function (b) { b.classList.toggle('active', mode === 'add' && b.getAttribute('data-type') === addType); });
     }
     if (q('points')) {
         redraw();
@@ -149,6 +151,8 @@
             }
             pickMarker(ev.latlng);
             setMode('pick');
+        } else if (mode === 'add') {
+            addAt(ev.latlng);
         }
     });
     var picked = null;
@@ -189,6 +193,109 @@
     var cpLat = document.querySelector('[data-rm="cp-lat"]');
     if (cpLat && cpLat.value) {
         pickMarker([+cpLat.value, +document.querySelector('[data-rm="cp-lng"]').value]);
+    }
+
+    // ------------------------------------------------------------- quick checkpoint setup on the map (v69)
+    // Pick a type, click the map: the checkpoint is saved at once, named, put in running order and given
+    // its km. Drag a marker to move it; click it to rename or remove it. One click places Start/Finish at
+    // the ends of the route, and another fills in water stations every few km.
+    var editorUrl = el.getAttribute('data-editor-url');
+    var TYPE_ICONS = { start: 'bi-flag-fill', finish: 'bi-flag-fill', checkpoint: 'bi-stopwatch', water_station: 'bi-droplet-fill',
+        medical_station: 'bi-plus-lg', emergency_point: 'bi-exclamation-triangle-fill', turnaround_point: 'bi-arrow-repeat' };
+    var TYPE_NAMES = { start: 'Start', finish: 'Finish', checkpoint: 'Checkpoint', water_station: 'Water Station',
+        medical_station: 'Medical Station', emergency_point: 'Emergency Point', turnaround_point: 'Turn-around Point' };
+    var addType = null;
+    var changes = 0;
+
+    function cpIcon(c) {
+        var color = c.active ? (TYPE_COLORS[c.type] || '#6c757d') : '#adb5bd';
+        return L.divIcon({ className: 'race-cp', iconSize: [28, 28], iconAnchor: [14, 14],
+            html: '<span style="background:' + color + '"><i class="bi ' + (TYPE_ICONS[c.type] || 'bi-geo-alt') + '" aria-hidden="true"></i></span>' });
+    }
+    function popupHtml(c) {
+        return '<div class="race-cp-popup" data-cp="' + c.id + '">'
+            + '<div class="small text-muted mb-1">' + c.seq + '. ' + esc(TYPE_NAMES[c.type] || c.type) + (c.km != null ? ' · ' + c.km.toFixed(2) + ' km' : '') + (c.active ? '' : ' · inactive') + '</div>'
+            + '<input class="form-control form-control-sm mb-2" value="' + esc(c.label) + '" maxlength="100" aria-label="Checkpoint name">'
+            + '<div class="d-flex gap-1"><button type="button" class="btn btn-sm btn-evora-primary" data-cp-act="rename">Save name</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-danger" data-cp-act="delete">Remove</button></div>'
+            + '<div class="small text-muted mt-2">Drag the marker to move it.</div></div>';
+    }
+    function renderEditable(list) {
+        m.checkpoints.clearLayers();
+        list.forEach(function (c) {
+            if (c.lat == null) { return; }
+            L.circle([c.lat, c.lng], { radius: c.radius || 60, color: TYPE_COLORS[c.type] || '#6c757d', weight: 1, fillOpacity: 0.1, interactive: false }).addTo(m.checkpoints);
+            var mk = L.marker([c.lat, c.lng], { icon: cpIcon(c), draggable: true, riseOnHover: true, keyboard: true, title: c.label }).addTo(m.checkpoints);
+            mk.bindTooltip(c.seq + '. ' + esc(c.label) + (c.km != null ? ' · ' + c.km.toFixed(2) + ' km' : ''));
+            mk.bindPopup(function () { return popupHtml(c); }, { minWidth: 220 });
+            mk.on('dragend', function () {
+                var p = mk.getLatLng();
+                send({ map_action: 'move', checkpoint_id: c.id, lat: p.lat.toFixed(6), lng: p.lng.toFixed(6) });
+            });
+        });
+    }
+    function status(text, kind) {
+        var s = q('quick-status');
+        if (!s) { return; }
+        s.className = 'small ms-auto ' + (kind === 'error' ? 'text-danger' : kind === 'ok' ? 'text-success' : 'text-muted');
+        s.innerHTML = esc(text) + (changes && kind === 'ok' ? ' · <a href="#" data-rm="reload-list">Refresh the list below</a>' : '');
+    }
+    function send(fields) {
+        var body = new URLSearchParams();
+        body.set('csrf_token', el.getAttribute('data-csrf'));
+        body.set('event_id', el.getAttribute('data-event-id'));
+        Object.keys(fields).forEach(function (k) { body.set(k, fields[k]); });
+        status('Saving…', '');
+        return fetch(editorUrl, { method: 'POST', credentials: 'same-origin', body: body, headers: { Accept: 'application/json' } })
+            .then(function (r) { return r.json().catch(function () { return { ok: false, message: 'Could not save. Reload the page.' }; }); })
+            .then(function (d) {
+                if (d.checkpoints) { renderEditable(d.checkpoints); }
+                if (!d.ok) { status(d.message || 'Could not save.', 'error'); return; }
+                changes++;
+                status(d.message, 'ok');
+            })
+            .catch(function () { status('No connection. Try again.', 'error'); });
+    }
+    function addAt(latlng) {
+        send({ map_action: 'add', type: addType, lat: latlng.lat.toFixed(6), lng: latlng.lng.toFixed(6) });
+        if (addType === 'start' || addType === 'finish') { setMode('add'); } // only one of each: stop after placing it
+    }
+
+    if (editorUrl) {
+        renderEditable(readJson(el, 'data-cp-list', []));
+        root.addEventListener('click', function (ev) {
+            var b = ev.target.closest('[data-rm]');
+            if (!b) { return; }
+            var act = b.getAttribute('data-rm');
+            if (act === 'add') {
+                var t = b.getAttribute('data-type');
+                if (mode === 'add' && addType === t) { setMode('add'); return; }
+                addType = t;
+                mode = null;
+                setMode('add');
+            } else if (act === 'auto-sf') {
+                send({ map_action: 'auto_start_finish' });
+            } else if (act === 'water-every') {
+                send({ map_action: 'water_every', km: q('water-km').value });
+            } else if (act === 'reload-list') {
+                ev.preventDefault();
+                location.reload();
+            }
+        });
+        el.addEventListener('click', function (ev) {
+            var b = ev.target.closest('[data-cp-act]');
+            if (!b) { return; }
+            var box = b.closest('[data-cp]');
+            var id = +box.getAttribute('data-cp');
+            if (b.getAttribute('data-cp-act') === 'rename') {
+                send({ map_action: 'rename', checkpoint_id: id, label: box.querySelector('input').value });
+                map.closePopup();
+            } else if (window.confirm('Remove this checkpoint? Runner scans recorded at it are removed too.')) {
+                send({ map_action: 'delete', checkpoint_id: id });
+                map.closePopup();
+            }
+        });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && mode) { setMode(mode); } });
     }
 
     // ------------------------------------------------------------- live runners (v68: Strava-like)

@@ -166,6 +166,205 @@ class RaceTrackingService
         return $distance;
     }
 
+    // ------------------------------------------------------------------ quick checkpoint setup on the map (v69)
+
+    public const CHECKPOINT_TYPES = ['start' => 'Start', 'finish' => 'Finish', 'checkpoint' => 'Checkpoint', 'water_station' => 'Water Station',
+        'medical_station' => 'Medical Station', 'emergency_point' => 'Emergency Point', 'turnaround_point' => 'Turn-around Point'];
+
+    /** [metres along the route to the closest point, metres away from the route] for a position. */
+    public static function routeProgress(float $lat, float $lng, array $route): array
+    {
+        $n = count($route);
+        if ($n < 2) {
+            return [0.0, INF];
+        }
+        $kx = 111320.0 * cos(deg2rad($lat));
+        $ky = 110540.0;
+        $bestOff = INF;
+        $bestAlong = 0.0;
+        $walked = 0.0;
+        for ($i = 0; $i < $n - 1; $i++) {
+            $ax = ($route[$i][1] - $lng) * $kx;
+            $ay = ($route[$i][0] - $lat) * $ky;
+            $dx = ($route[$i + 1][1] - $route[$i][1]) * $kx;
+            $dy = ($route[$i + 1][0] - $route[$i][0]) * $ky;
+            $len2 = $dx * $dx + $dy * $dy;
+            $t = $len2 > 0 ? max(0.0, min(1.0, -($ax * $dx + $ay * $dy) / $len2)) : 0.0;
+            $off = hypot($ax + $t * $dx, $ay + $t * $dy);
+            $segLen = self::haversine($route[$i][0], $route[$i][1], $route[$i + 1][0], $route[$i + 1][1]);
+            if ($off < $bestOff - 0.5) { // the first pass wins on an out-and-back course
+                $bestOff = $off;
+                $bestAlong = $walked + $t * $segLen;
+            }
+            $walked += $segLen;
+        }
+
+        return [$bestAlong, $bestOff];
+    }
+
+    /** The position $metres along the route. */
+    public static function pointAlong(array $route, float $metres): array
+    {
+        $walked = 0.0;
+        for ($i = 0, $n = count($route); $i < $n - 1; $i++) {
+            $seg = self::haversine($route[$i][0], $route[$i][1], $route[$i + 1][0], $route[$i + 1][1]);
+            if ($walked + $seg >= $metres && $seg > 0) {
+                $t = ($metres - $walked) / $seg;
+                return [round($route[$i][0] + ($route[$i + 1][0] - $route[$i][0]) * $t, 6), round($route[$i][1] + ($route[$i + 1][1] - $route[$i][1]) * $t, 6)];
+            }
+            $walked += $seg;
+        }
+
+        return [round($route[count($route) - 1][0], 6), round($route[count($route) - 1][1], 6)];
+    }
+
+    /** Every checkpoint of an event for the map editor. */
+    public static function checkpointsForMap(PDO $db, int $eventId): array
+    {
+        $stmt = $db->prepare('SELECT id, sequence_no, label, checkpoint_type, distance_km, lat, lng, radius_m, status FROM event_checkpoints WHERE event_id = :e ORDER BY sequence_no, id');
+        $stmt->execute(['e' => $eventId]);
+
+        return array_map(fn ($c) => ['id' => (int) $c['id'], 'seq' => (int) $c['sequence_no'], 'label' => $c['label'], 'type' => $c['checkpoint_type'],
+            'km' => $c['distance_km'] !== null ? (float) $c['distance_km'] : null, 'lat' => $c['lat'] !== null ? (float) $c['lat'] : null,
+            'lng' => $c['lng'] !== null ? (float) $c['lng'] : null, 'radius' => (int) $c['radius_m'], 'active' => $c['status'] === 'active'], $stmt->fetchAll());
+    }
+
+    /**
+     * Puts the checkpoints in running order: Start first, Finish last, the rest by their km. A mapped
+     * checkpoint without a km gets it from its place on the route; a km already set is kept (on an
+     * out-and-back course the same spot is passed twice, so only the km says which pass is meant).
+     */
+    public static function resequenceCheckpoints(PDO $db, int $eventId): void
+    {
+        $route = self::route($db, $eventId);
+        $rows = self::checkpointsForMap($db, $eventId);
+        foreach ($rows as &$c) {
+            if ($c['km'] === null && $route && $c['lat'] !== null) {
+                $c['km'] = round(($c['type'] === 'finish' ? (float) $route['distance_m'] : ($c['type'] === 'start' ? 0.0 : self::routeProgress($c['lat'], $c['lng'], $route['points'])[0])) / 1000, 2);
+            }
+        }
+        unset($c);
+        usort($rows, function ($a, $b) {
+            $rank = fn ($c) => $c['type'] === 'start' ? 0 : ($c['type'] === 'finish' ? 3 : ($c['km'] === null ? 2 : 1));
+            return [$rank($a), $a['km'] ?? 0, $a['seq'], $a['id']] <=> [$rank($b), $b['km'] ?? 0, $b['seq'], $b['id']];
+        });
+        $upd = $db->prepare('UPDATE event_checkpoints SET sequence_no = :s, distance_km = :km WHERE id = :id AND event_id = :e');
+        foreach ($rows as $i => $c) {
+            $upd->execute(['s' => $i + 1, 'km' => $c['km'], 'id' => $c['id'], 'e' => $eventId]);
+        }
+    }
+
+    /** km of a spot on the route (Start 0, Finish the full length, else the first pass by that spot). */
+    private static function kmAt(PDO $db, int $eventId, string $type, float $lat, float $lng): ?float
+    {
+        $route = self::route($db, $eventId);
+        if (!$route) {
+            return null;
+        }
+        if ($type === 'start') {
+            return 0.0;
+        }
+        if ($type === 'finish') {
+            return round($route['distance_m'] / 1000, 2);
+        }
+
+        return round(self::routeProgress($lat, $lng, $route['points'])[0] / 1000, 2);
+    }
+    /** "Water Station 3": the type name, numbered when there can be several. */
+    private static function nextCheckpointLabel(PDO $db, int $eventId, string $type): string
+    {
+        $name = self::CHECKPOINT_TYPES[$type];
+        if (in_array($type, ['start', 'finish'], true)) {
+            return $name;
+        }
+        $stmt = $db->prepare('SELECT COUNT(*) FROM event_checkpoints WHERE event_id = :e AND checkpoint_type = :t');
+        $stmt->execute(['e' => $eventId, 't' => $type]);
+
+        return $name . ' ' . ((int) $stmt->fetchColumn() + 1);
+    }
+
+    /** Adds a checkpoint where the organizer clicked on the map. Returns its id. */
+    public static function addCheckpointAt(PDO $db, int $eventId, string $type, float $lat, float $lng, int $userId): int
+    {
+        if (!isset(self::CHECKPOINT_TYPES[$type])) {
+            throw new DomainException('Unknown checkpoint type.');
+        }
+        if (!self::validLatLng($lat, $lng)) {
+            throw new DomainException('That place is outside the map.');
+        }
+        if (in_array($type, ['start', 'finish'], true)) {
+            $has = $db->prepare('SELECT id FROM event_checkpoints WHERE event_id = :e AND checkpoint_type = :t AND status = "active" LIMIT 1');
+            $has->execute(['e' => $eventId, 't' => $type]);
+            if ($id = $has->fetchColumn()) {
+                self::moveCheckpoint($db, $eventId, (int) $id, $lat, $lng); // one start / one finish: move it instead
+                return (int) $id;
+            }
+        }
+        $db->prepare('INSERT INTO event_checkpoints (event_id, sequence_no, label, checkpoint_type, distance_km, lat, lng, radius_m) VALUES (:e, 999, :l, :t, :km, :lat, :lng, 60)')
+            ->execute(['e' => $eventId, 'l' => self::nextCheckpointLabel($db, $eventId, $type), 't' => $type, 'km' => self::kmAt($db, $eventId, $type, $lat, $lng), 'lat' => round($lat, 6), 'lng' => round($lng, 6)]);
+        $id = (int) $db->lastInsertId();
+        self::resequenceCheckpoints($db, $eventId);
+        Logger::log($userId, 'checkpoint_added', 'Added a ' . self::CHECKPOINT_TYPES[$type] . ' on the map for event #' . $eventId);
+
+        return $id;
+    }
+
+    public static function moveCheckpoint(PDO $db, int $eventId, int $id, float $lat, float $lng): void
+    {
+        if (!self::validLatLng($lat, $lng)) {
+            throw new DomainException('That place is outside the map.');
+        }
+        $type = $db->prepare('SELECT checkpoint_type FROM event_checkpoints WHERE id = :id AND event_id = :e');
+        $type->execute(['id' => $id, 'e' => $eventId]);
+        $db->prepare('UPDATE event_checkpoints SET lat = :lat, lng = :lng, distance_km = :km WHERE id = :id AND event_id = :e')
+            ->execute(['lat' => round($lat, 6), 'lng' => round($lng, 6), 'km' => self::kmAt($db, $eventId, (string) $type->fetchColumn(), $lat, $lng), 'id' => $id, 'e' => $eventId]);
+        self::resequenceCheckpoints($db, $eventId);
+    }
+
+    /** Start at the beginning of the drawn route, Finish at its end (existing ones are moved). */
+    public static function autoStartFinish(PDO $db, int $eventId, int $userId): void
+    {
+        $route = self::route($db, $eventId);
+        if (!$route) {
+            throw new DomainException('Draw and save the route first.');
+        }
+        $first = $route['points'][0];
+        $last = $route['points'][count($route['points']) - 1];
+        self::addCheckpointAt($db, $eventId, 'start', (float) $first[0], (float) $first[1], $userId);
+        self::addCheckpointAt($db, $eventId, 'finish', (float) $last[0], (float) $last[1], $userId);
+    }
+
+    /** Water stations every $km along the route, skipping places that already have one nearby. Returns how many were added. */
+    public static function waterEvery(PDO $db, int $eventId, float $km, int $userId): int
+    {
+        $route = self::route($db, $eventId);
+        if (!$route) {
+            throw new DomainException('Draw and save the route first.');
+        }
+        if ($km < 0.5 || $km > 20) {
+            throw new DomainException('Choose a spacing between 0.5 and 20 km.');
+        }
+        $existing = array_filter(self::checkpointsForMap($db, $eventId), fn ($c) => $c['type'] === 'water_station' && $c['lat'] !== null && $c['active']);
+        $added = 0;
+        for ($m = $km * 1000; $m < $route['distance_m'] - 200; $m += $km * 1000) {
+            [$lat, $lng] = self::pointAlong($route['points'], $m);
+            foreach ($existing as $w) {
+                if (self::haversine($lat, $lng, $w['lat'], $w['lng']) < 150) {
+                    continue 2;
+                }
+            }
+            $db->prepare('INSERT INTO event_checkpoints (event_id, sequence_no, label, checkpoint_type, distance_km, lat, lng, radius_m) VALUES (:e, 999, :l, "water_station", :km, :lat, :lng, 60)')
+                ->execute(['e' => $eventId, 'l' => self::nextCheckpointLabel($db, $eventId, 'water_station'), 'km' => round($m / 1000, 2), 'lat' => $lat, 'lng' => $lng]);
+            $existing[] = ['lat' => $lat, 'lng' => $lng];
+            $added++;
+        }
+        self::resequenceCheckpoints($db, $eventId);
+        if ($added) {
+            Logger::log($userId, 'checkpoint_added', 'Added ' . $added . ' water stations every ' . $km . ' km for event #' . $eventId);
+        }
+
+        return $added;
+    }
     // ------------------------------------------------------------------ tracking (runner)
 
     /**
