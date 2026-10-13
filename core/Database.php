@@ -13,6 +13,8 @@ class Database
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]);
+            // The database server may run in another time zone (hosting); NOW()/CURDATE() must match PHP (v62).
+            self::$instance->exec("SET time_zone = '" . date('P') . "'");
         }
 
         return self::$instance;
