@@ -151,6 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?= pageHead($pageMeta ?? []) ?>
 </head>
 <body class="auth-shell">
+<?php include EVORA_ROOT . '/modules/auth/partials/auth_floaters.php'; ?>
 <div class="auth-card" style="max-width:620px;">
     <h3 class="fw-bold mb-1">Apply as Organizer</h3>
     <p class="text-muted small mb-3">Submit your organization details and verification documents for admin review.</p>

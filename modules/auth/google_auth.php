@@ -41,7 +41,7 @@ if ($route === 'google-callback') {
     if (isset($result['user'])) {
         Auth::login($result['user']);
         Logger::log((int) $result['user']['id'], 'google_signin', 'Signed in with Google');
-        redirect('participant-dashboard');
+        Auth::redirectIntended('participant-dashboard');
     }
     $_SESSION['google_pending'] = $result['new'] + ['at' => time()];
     redirect('google-complete');
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     unset($_SESSION['google_pending']);
     Auth::login($user);
     flash('success', 'Welcome to EVORA, ' . $user['full_name'] . '! Your account was created with Google.');
-    redirect('participant-dashboard');
+    Auth::redirectIntended('participant-dashboard');
 }
 ?>
 <!doctype html>
@@ -98,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?= pageHead($pageMeta ?? []) ?>
 </head>
 <body class="auth-shell">
+<?php include EVORA_ROOT . '/modules/auth/partials/auth_floaters.php'; ?>
 <div class="auth-card">
     <h3 class="fw-bold mb-1"><i class="bi bi-google me-1" aria-hidden="true"></i>Create your EVORA account</h3>
     <p class="text-muted small mb-3">You signed in with Google. Check your details, then create your participant account.</p>

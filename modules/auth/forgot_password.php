@@ -37,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?= pageHead($pageMeta ?? []) ?>
 </head>
 <body class="auth-shell">
+<?php include EVORA_ROOT . '/modules/auth/partials/auth_floaters.php'; ?>
 <div class="auth-card">
     <h3 class="fw-bold mb-1">Forgot Password</h3>
     <p class="text-muted small mb-4">Enter the email address of your EVORA account and we will email you a link to choose a new password.</p>

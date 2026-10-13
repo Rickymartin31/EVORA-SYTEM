@@ -38,6 +38,7 @@ header('Referrer-Policy: no-referrer');
     <?= pageHead($pageMeta ?? []) ?>
 </head>
 <body class="auth-shell">
+<?php include EVORA_ROOT . '/modules/auth/partials/auth_floaters.php'; ?>
 <div class="auth-card">
     <h3 class="fw-bold mb-1">Choose a New Password</h3>
     <?php if ($err = flash('error')): ?>

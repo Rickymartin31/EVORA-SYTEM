@@ -206,9 +206,62 @@ class Auth
     public static function requireLogin(): void
     {
         if (!self::check()) {
+            if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+                $params = $_GET;
+                $route = (string) ($params['route'] ?? '');
+                unset($params['route']);
+                self::rememberNext($route, $params);
+            }
             header('Location: ' . BASE_URL . '/index.php?route=login');
             exit;
         }
+    }
+
+    /** Pages that must never be the "after sign-in" destination. */
+    private const NEXT_BLOCKED = ['', 'home', 'login', 'login.post', 'login-otp', 'logout', 'google-login', 'google-callback', 'google-complete',
+        'register-participant', 'register-organizer', 'forgot-password', 'reset-password', 'verify-email', 'verify-email-resend'];
+
+    /**
+     * Remembers the page a signed-out visitor wanted (v65), so signing in brings them back to it.
+     * Only an EVORA route with plain query values is kept; it expires after 30 minutes.
+     */
+    public static function rememberNext(string $route, array $params = []): void
+    {
+        if (!preg_match('/^[a-z0-9][a-z0-9.-]{0,60}$/', $route) || in_array($route, self::NEXT_BLOCKED, true)) {
+            return;
+        }
+        $clean = [];
+        foreach ($params as $k => $v) {
+            if (is_string($k) && preg_match('/^[a-z0-9_]{1,30}$/i', $k) && is_scalar($v) && strlen((string) $v) <= 120) {
+                $clean[$k] = (string) $v;
+            }
+        }
+        $_SESSION['login_next'] = ['route' => $route, 'params' => $clean, 'at' => time()];
+    }
+
+    /** "route=event-view&id=3" from a sign-in link (?return=...). */
+    public static function rememberNextFromQuery(string $query): void
+    {
+        parse_str(ltrim($query, '?'), $p);
+        $route = (string) ($p['route'] ?? '');
+        unset($p['route']);
+        self::rememberNext($route, $p);
+    }
+
+    /** After a sign-in: go to the remembered page when it fits the user's role, otherwise to $fallback. */
+    public static function redirectIntended(string $fallback): void
+    {
+        $next = $_SESSION['login_next'] ?? null;
+        unset($_SESSION['login_next']);
+        if (is_array($next) && time() - (int) ($next['at'] ?? 0) <= 1800) {
+            $route = (string) $next['route'];
+            $prefix = explode('-', $route)[0];
+            $otherRole = in_array($prefix, ['admin', 'organizer', 'staff', 'participant'], true) && $prefix !== self::role();
+            if (!$otherRole) {
+                redirect($route, (array) ($next['params'] ?? []));
+            }
+        }
+        redirect($fallback);
     }
 
     public static function requireRole(string|array $roles): void

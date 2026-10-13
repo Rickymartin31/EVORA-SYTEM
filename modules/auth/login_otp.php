@@ -27,7 +27,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         LoginOtpService::clear();
         Auth::login($user);
         Logger::log((int) $user['id'], 'login_otp_verified', 'Signed in with an emailed login code');
-        redirect($next !== '' && $user['role_name'] === 'organizer' ? $next : $user['role_name'] . '-dashboard');
+        if ($next !== '' && $user['role_name'] === 'organizer') {
+            redirect($next);
+        }
+        Auth::redirectIntended($user['role_name'] . '-dashboard');
     } catch (DomainException $e) {
         flash('error', $e->getMessage());
         redirect(LoginOtpService::pendingUser($db) ? 'login-otp' : 'login');
@@ -54,6 +57,7 @@ $maskedEmail = mb_substr($local, 0, 2) . str_repeat('•', max(1, mb_strlen($loc
     <?= pageHead($pageMeta ?? []) ?>
 </head>
 <body class="auth-shell">
+<?php include EVORA_ROOT . '/modules/auth/partials/auth_floaters.php'; ?>
 <div class="auth-card">
     <h3 class="fw-bold mb-1"><i class="bi bi-shield-lock me-1" aria-hidden="true"></i>Enter Login Code</h3>
     <p class="text-muted small mb-4">We emailed a 6-digit code to <strong><?= e($maskedEmail) ?></strong>. It expires in <?= LoginOtpService::TTL_MINUTES ?> minutes. Check your spam folder if you don't see it.</p>

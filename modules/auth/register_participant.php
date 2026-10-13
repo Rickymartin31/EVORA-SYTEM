@@ -102,6 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?= pageHead($pageMeta ?? []) ?>
 </head>
 <body class="auth-shell">
+<?php include EVORA_ROOT . '/modules/auth/partials/auth_floaters.php'; ?>
 <div class="auth-card" style="max-width:520px;">
     <h3 class="fw-bold mb-1">Join EVORA</h3>
     <p class="text-muted small mb-3">Create a participant account to browse and register for events.</p>

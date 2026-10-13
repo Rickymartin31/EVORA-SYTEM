@@ -2317,3 +2317,26 @@ a .stat-card:active, a.stat-card:active { transform: scale(.97) !important; filt
   .reveal-wait { opacity: 1 !important; } .reveal-in { animation: none !important; }
   .ripple { animation-duration: .45s !important; } /* tap feedback stays, unlike decoration */
 }
+
+/* v65 sign-in pages: floating EVORA icons behind the card, and who-signs-in chips */
+.auth-floaters { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.auth-shell > .auth-card { position: relative; z-index: 1; }
+.auth-floater { position: absolute; left: var(--x); top: var(--y); color: #a5b4fc; opacity: .16; font-size: 2.6rem; line-height: 1;
+  animation: evora-float var(--t, 12s) ease-in-out var(--d, 0s) infinite alternate; will-change: transform; }
+.auth-floater:nth-child(3n) { color: #67e8f9; }
+.auth-floater-chip { font-size: .8rem; font-weight: 700; letter-spacing: .02em; padding: .3rem .7rem; border-radius: 999px;
+  border: 1px solid currentColor; opacity: .22; white-space: nowrap; }
+@keyframes evora-float {
+  0% { transform: translate(-50%, -50%) translateY(0) rotate(-6deg); }
+  50% { transform: translate(-50%, -50%) translateY(-18px) rotate(4deg); }
+  100% { transform: translate(-50%, -50%) translateY(10px) rotate(-2deg); }
+}
+@media (max-width: 575.98px) {
+  .auth-floater { font-size: 1.9rem; opacity: .12; }
+  .auth-floater-chip { display: none; }
+}
+.auth-role-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem; }
+.auth-role-chips span { display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .65rem; border-radius: 999px; font-size: .78rem; font-weight: 600;
+  color: var(--evora-text-muted); background: var(--evora-primary-soft); border: 1px solid var(--evora-border); }
+.auth-role-chips .bi { color: var(--evora-primary); }
+@media (prefers-reduced-motion: reduce) { .auth-floater { animation: none; transform: translate(-50%, -50%); } }

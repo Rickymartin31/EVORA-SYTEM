@@ -1,7 +1,8 @@
 <?php
 // The only page a sign-in may continue to (used when Connect PayPal moves an organizer to 127.0.0.1).
 $next = ($_GET['next'] ?? '') === 'organizer-paypal-account' ? 'organizer-paypal-account' : '';
-if (Auth::check()): redirect($next !== '' && Auth::role() === 'organizer' ? $next : Auth::role() . '-dashboard'); endif; ?>
+if (Auth::check()): redirect($next !== '' && Auth::role() === 'organizer' ? $next : Auth::role() . '-dashboard'); endif;
+if (!empty($_GET['return']) && is_string($_GET['return'])): Auth::rememberNextFromQuery($_GET['return']); endif; ?>
 <!doctype html>
 <html lang="en">
 <head>
@@ -18,9 +19,16 @@ if (Auth::check()): redirect($next !== '' && Auth::role() === 'organizer' ? $nex
     <?= pageHead($pageMeta ?? []) ?>
 </head>
 <body class="auth-shell">
+<?php include EVORA_ROOT . '/modules/auth/partials/auth_floaters.php'; ?>
 <div class="auth-card">
     <h3 class="fw-bold mb-1">EVO<span style="color:var(--evora-primary)">RA</span> Login</h3>
-    <p class="text-muted small mb-4">Sign in to manage your events, staff, or registrations.</p>
+    <p class="text-muted small mb-3">Sign in to manage your events, staff, or registrations.</p>
+    <div class="auth-role-chips mb-4" aria-label="Who signs in here">
+        <span><i class="bi bi-person" aria-hidden="true"></i> Participants</span>
+        <span><i class="bi bi-building" aria-hidden="true"></i> Organizers</span>
+        <span><i class="bi bi-person-badge" aria-hidden="true"></i> Staff</span>
+        <span><i class="bi bi-shield-lock" aria-hidden="true"></i> Administrators</span>
+    </div>
 
     <?= MaintenanceService::bannerHtml(true) ?>
     <?php if (!empty($_GET['expired'])): ?>

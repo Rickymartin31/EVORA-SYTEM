@@ -47,4 +47,7 @@ if (LoginOtpService::required($user)) {
 }
 
 Auth::login($user);
-redirect($next !== '' && $user['role_name'] === 'organizer' ? $next : $user['role_name'] . '-dashboard');
+if ($next !== '' && $user['role_name'] === 'organizer') {
+    redirect($next);
+}
+Auth::redirectIntended($user['role_name'] . '-dashboard'); // v65: back to the page they wanted

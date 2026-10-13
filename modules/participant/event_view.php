@@ -290,7 +290,7 @@ if ($isGuest) {
             <?php endif; ?>
             <?php if ($isGuest): ?>
                 <p class="small text-muted">Log in as a participant to register for this event.</p>
-                <a href="<?= url('login') ?>" class="btn btn-evora-primary w-100">Login to Register</a>
+                <a href="<?= url('login', ['return' => 'route=event-view&id=' . (int) $event['id']]) ?>" class="btn btn-evora-primary w-100">Login to Register</a>
             <?php elseif (Auth::role() !== 'participant'): ?>
                 <p class="small text-muted mb-0">Only participant accounts can register for events.</p>
             <?php elseif ($myRegistration): ?>
