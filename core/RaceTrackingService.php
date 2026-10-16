@@ -373,7 +373,7 @@ class RaceTrackingService
      */
     public static function trackable(PDO $db, int $registrationId, int $userId): array
     {
-        $stmt = $db->prepare('SELECT r.id, r.status, r.bib_number, r.distance_category, e.id AS event_id, e.name AS event_name, e.event_date, e.event_time, e.status AS event_status, c.slug
+        $stmt = $db->prepare('SELECT r.id, r.status, r.bib_number, r.distance_category, e.id AS event_id, e.name AS event_name, e.event_date, e.event_time, e.status AS event_status, e.gps_tracking, c.slug
             FROM registrations r JOIN participants p ON p.id = r.participant_id JOIN events e ON e.id = r.event_id JOIN event_categories c ON c.id = e.category_id
             WHERE r.id = :r AND p.user_id = :u');
         $stmt->execute(['r' => $registrationId, 'u' => $userId]);
@@ -383,6 +383,9 @@ class RaceTrackingService
         }
         if ($reg['slug'] !== 'fun-run') {
             return ['reg' => $reg, 'why' => 'Live tracking is only for fun runs.'];
+        }
+        if (empty($reg['gps_tracking'])) {
+            return ['reg' => $reg, 'why' => 'This race does not use GPS live tracking.'];
         }
         if ($reg['status'] !== 'approved') {
             return ['reg' => $reg, 'why' => 'Your registration must be approved before you can be tracked.'];
@@ -666,6 +669,9 @@ class RaceTrackingService
     {
         if ($reg['slug'] !== 'fun-run') {
             return 'GPX upload is only for fun runs.';
+        }
+        if (empty($reg['gps_tracking'])) {
+            return 'This race does not use GPS live tracking.';
         }
         if ($reg['status'] !== 'approved') {
             return 'Your registration must be approved first.';

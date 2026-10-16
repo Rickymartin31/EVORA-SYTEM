@@ -304,7 +304,7 @@ if ($isGuest) {
                         <?php endif; ?>
                     </a>
                 <?php elseif ($myRegistration['status'] === 'approved'): ?>
-                    <?php if ($event['category_slug'] === 'fun-run' && date('Y-m-d') >= $event['event_date'] && date('Y-m-d') <= date('Y-m-d', strtotime($event['event_date'] . ' +' . RaceTrackingService::GPX_UPLOAD_DAYS . ' days'))): ?>
+                    <?php if ($event['category_slug'] === 'fun-run' && !empty($event['gps_tracking']) && date('Y-m-d') >= $event['event_date'] && date('Y-m-d') <= date('Y-m-d', strtotime($event['event_date'] . ' +' . RaceTrackingService::GPX_UPLOAD_DAYS . ' days'))): ?>
                         <a href="<?= url('race-tracker', ['registration_id' => $myRegistration['id']]) ?>" class="btn btn-evora-primary w-100 mt-3"><i class="bi bi-broadcast"></i> Open Race Tracker</a>
                     <?php endif; ?>
                     <a href="<?= url('my-qr') ?>" class="btn btn-outline-primary w-100 mt-3">View My QR</a>

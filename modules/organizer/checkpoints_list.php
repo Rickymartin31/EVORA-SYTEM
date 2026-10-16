@@ -69,16 +69,56 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
     ['label' => $event['name'], 'route' => 'organizer-event-manage', 'params' => ['id' => $eventId]],
     ['label' => 'Route Management'],
 ]); ?>
+<?php $gpsOn = !empty($event['gps_tracking']); ?>
+<?php ob_start(); ?>
+<ol class="gps-steps small mb-0">
+    <li><strong>Draw the route</strong> on the map (<em>Draw route</em>), then press <em>Save Route</em>.</li>
+    <li><strong>Set the checkpoints</strong> in one click each: <em>Auto Start/Finish</em>, <em>Water every 2 km</em>, or pick Water / Medical / Checkpoint and click the map.</li>
+    <li><strong>Tell your runners:</strong> on race day, open the event &rarr; <em>Open Race Tracker</em> &rarr; <em>Start</em> at the starting line, allow location, keep the page open, and tap <em>Finish</em> after the finish line.</li>
+    <li><strong>On race day</strong>, open <em>Live Runners</em>: every runner moves on the map with pace, time and checkpoints. A runner more than <?= RaceTrackingService::OFF_ROUTE_ALERT_M ?> m off the route turns red right away.</li>
+    <li><strong>After the race</strong>, each run is checked: <em>Verified</em> or <em>Possible shortcut</em> (a flag for your review). Runners with Strava or a sports watch can upload a GPX file up to <?= RaceTrackingService::GPX_UPLOAD_DAYS ?> days after.</li>
+</ol>
+<?php $gpsSteps = ob_get_clean(); ?>
+<?php if (!$gpsOn): ?>
+<div class="card-evora p-4 gps-intro">
+    <div class="d-flex flex-wrap gap-3 align-items-start">
+        <span class="gps-intro-icon" aria-hidden="true"><i class="bi bi-broadcast-pin"></i></span>
+        <div class="flex-grow-1">
+            <h6 class="fw-semibold mb-1">GPS Live Tracking (anti-shortcut) <span class="badge text-bg-secondary ms-1">Off</span></h6>
+            <p class="small text-muted mb-3">Optional. Follow every runner live on a map, like Strava, and get an alert the moment someone leaves the course. Use it when shortcuts matter; for a casual fun run, route pictures and checkpoints are enough.</p>
+            <div class="fw-semibold small mb-2">How it works</div>
+            <?= $gpsSteps ?>
+            <p class="small text-muted mt-3 mb-3"><i class="bi bi-info-circle"></i> Runners need a phone with GPS and mobile data. You can turn it off again any time; nothing you set up is lost.</p>
+            <form method="post" action="<?= url('organizer-gps-tracking') ?>" class="d-inline">
+                <?= Csrf::field() ?>
+                <input type="hidden" name="event_id" value="<?= $eventId ?>">
+                <input type="hidden" name="enable" value="1">
+                <button type="submit" class="btn btn-evora-primary"><i class="bi bi-broadcast"></i> Turn on GPS Live Tracking</button>
+            </form>
+        </div>
+    </div>
+</div>
+<?php else: ?>
 <link rel="stylesheet" href="<?= assetUrl('vendor/leaflet/leaflet.css') ?>">
 
 <div class="card-evora p-4" data-race-map-root>
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h6 class="fw-semibold mb-0"><i class="bi bi-map me-1"></i> Route Map &amp; Live Tracking</h6>
+        <h6 class="fw-semibold mb-0"><i class="bi bi-map me-1"></i> Route Map &amp; Live Tracking <span class="badge text-bg-success ms-1">GPS On</span></h6>
+        <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#gpsHowTo" aria-expanded="false" aria-controls="gpsHowTo"><i class="bi bi-question-circle"></i> How it works</button>
+            <form method="post" action="<?= url('organizer-gps-tracking') ?>" class="d-inline" data-confirm="Runners will no longer see the Race Tracker. Your route, checkpoints and recorded runs are kept." data-confirm-title="Turn off GPS live tracking?" data-confirm-button="Turn Off">
+                <?= Csrf::field() ?>
+                <input type="hidden" name="event_id" value="<?= $eventId ?>">
+                <input type="hidden" name="enable" value="0">
+                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-power"></i> Turn off</button>
+            </form>
+        </div>
         <div class="btn-group btn-group-sm" role="group" aria-label="Map view">
             <button type="button" class="btn btn-outline-primary active" data-rm="tab-route"><i class="bi bi-bezier2"></i> Route</button>
             <button type="button" class="btn btn-outline-primary" data-rm="tab-live"><i class="bi bi-broadcast"></i> Live Runners</button>
         </div>
     </div>
+    <div class="collapse" id="gpsHowTo"><div class="gps-howto mb-3"><?= $gpsSteps ?></div></div>
     <div data-rm-pane="route">
         <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
             <button type="button" class="btn btn-sm btn-outline-primary" data-rm="draw"><i class="bi bi-pencil"></i> Draw route</button>
@@ -139,6 +179,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
         <div class="form-text">Refreshes every 10 seconds. A runner more than <?= RaceTrackingService::OFF_ROUTE_ALERT_M ?> m from the route turns red right away. Phone GPS can be off by 10–30 m, so "Off route" and "Possible shortcut" are flags to review, not automatic disqualification. Runners with Strava or a sports watch can upload a GPX file after the race.</div>
     </div>
 </div>
+<?php endif; ?>
 
 <div class="row g-3">
     <div class="col-lg-8">
@@ -149,7 +190,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
             <?php else: ?>
             <div class="table-responsive">
                 <table class="table align-middle table-datatable">
-                    <thead><tr><th>#</th><th>Label</th><th>Type</th><th>Distance (km)</th><th>Map</th><th>Status</th><th></th></tr></thead>
+                    <thead><tr><th>#</th><th>Label</th><th>Type</th><th>Distance (km)</th><?php if ($gpsOn): ?><th>Map</th><?php endif; ?><th>Status</th><th></th></tr></thead>
                     <tbody>
                     <?php foreach ($checkpoints as $c): ?>
                         <?php $ct = $checkpointTypeLabels[$c['checkpoint_type']] ?? $checkpointTypeLabels['checkpoint']; ?>
@@ -158,7 +199,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                             <td><?= e($c['label']) ?></td>
                             <td><span class="badge <?= $ct['badge'] ?>"><i class="bi <?= $ct['icon'] ?>"></i> <?= e($ct['label']) ?></span></td>
                             <td><?= $c['distance_km'] !== null ? number_format((float) $c['distance_km'], 2) . ' km' : '—' ?></td>
-                            <td><?= $c['lat'] !== null ? '<i class="bi bi-geo-alt-fill text-success" title="On the map"></i><span class="visually-hidden">On the map</span>' : '<span class="text-muted small">Not set</span>' ?></td>
+                            <?php if ($gpsOn): ?><td><?= $c['lat'] !== null ? '<i class="bi bi-geo-alt-fill text-success" title="On the map"></i><span class="visually-hidden">On the map</span>' : '<span class="text-muted small">Not set</span>' ?></td><?php endif; ?>
                             <td><span class="badge <?= $c['status'] === 'active' ? 'bg-success' : 'bg-secondary' ?>"><?= $c['status'] === 'active' ? 'Active' : 'Inactive' ?></span></td>
                             <td class="text-nowrap">
                                 <a href="<?= url('organizer-checkpoints', ['event_id' => $eventId, 'edit' => $c['id']]) ?>" class="btn btn-sm btn-outline-secondary">Edit</a>
@@ -216,6 +257,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                     <label class="form-label small">Distance (km)</label>
                     <input type="number" step="0.01" min="0" name="distance_km" class="form-control form-control-sm" placeholder="e.g. 3.00" value="<?= e($editCheckpoint['distance_km'] ?? '') ?>">
                 </div>
+                <?php if ($gpsOn): ?>
                 <div class="mb-2">
                     <label class="form-label small">Map position</label>
                     <div class="input-group input-group-sm">
@@ -229,6 +271,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                     <input type="number" name="radius_m" min="20" max="500" class="form-control form-control-sm" value="<?= (int) ($editCheckpoint['radius_m'] ?? 60) ?>">
                     <div class="form-text">A runner passes the checkpoint within this distance.</div>
                 </div>
+                <?php endif; ?>
                 <button type="submit" class="btn btn-evora-primary btn-sm w-100"><?= $editCheckpoint ? 'Update Checkpoint' : 'Add Checkpoint' ?></button>
                 <?php if ($editCheckpoint): ?>
                     <a href="<?= url('organizer-checkpoints', ['event_id' => $eventId]) ?>" class="btn btn-outline-secondary btn-sm w-100 mt-2">Cancel</a>
@@ -269,6 +312,8 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
     </form>
     <div class="form-text">Approved participants get notified automatically when a new route picture is uploaded.</div>
 </div>
+<?php if ($gpsOn): ?>
 <script src="<?= assetUrl('vendor/leaflet/leaflet.js') ?>"></script>
 <script src="<?= assetUrl('js/race_map.js') ?>"></script>
+<?php endif; ?>
 <?php include EVORA_ROOT . '/modules/shared/partials/layout_bottom.php'; ?>

@@ -157,6 +157,7 @@ $router->get('organizer-checkpoints', EVORA_ROOT . '/modules/organizer/checkpoin
 $router->get('organizer-checkpoint-save', EVORA_ROOT . '/modules/organizer/checkpoint_save.php');
 $router->get('organizer-route-save', EVORA_ROOT . '/modules/organizer/route_save.php');
 $router->get('organizer-checkpoint-map', EVORA_ROOT . '/modules/organizer/checkpoint_map_action.php');
+$router->get('organizer-gps-tracking', EVORA_ROOT . '/modules/organizer/gps_tracking_toggle.php');
 $router->get('organizer-race-live', EVORA_ROOT . '/modules/organizer/race_live.php');
 $router->get('race-tracker', EVORA_ROOT . '/modules/participant/race_tracker.php');
 $router->get('race-track-action', EVORA_ROOT . '/modules/participant/race_track_action.php');
