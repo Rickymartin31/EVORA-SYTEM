@@ -31,7 +31,50 @@ if (!in_array($itemType, $allowedTypes, true)) {
     $itemType = 'other';
 }
 $variantLabel = trim($_POST['variant_label'] ?? '');
-$lowStockThreshold = max(0, (int) ($_POST['low_stock_threshold'] ?? 0));
+// v73: a blank low-stock alert means "automatic" (10% of the quantity)
+$thresholdInput = trim((string) ($_POST['low_stock_threshold'] ?? ''));
+$lowStockThreshold = $thresholdInput === '' ? EventItemService::autoThreshold(max(1, $totalQuantity)) : max(0, (int) $thresholdInput);
+
+// v73: "Add with sizes" creates one item per size (same name, size in variant_label) in one go.
+$sizes = [];
+if ($action === 'create' && !empty($_POST['use_sizes'])) {
+    foreach (EventItemService::SIZES as $size) {
+        $qty = (int) ($_POST['size_qty'][$size] ?? 0);
+        if ($qty > 0) {
+            $sizes[$size] = $qty;
+        }
+    }
+    $customSize = mb_substr(trim((string) ($_POST['custom_size'] ?? '')), 0, 40);
+    $customQty = (int) ($_POST['custom_size_qty'] ?? 0);
+    if ($customSize !== '' && $customQty > 0) {
+        $sizes[$customSize] = $customQty;
+    }
+    if ($itemName === '' || !$sizes) {
+        flash('error', 'Please enter the item name and a quantity for at least one size.');
+        redirect('organizer-items', ['event_id' => $eventId]);
+    }
+    $existing = $db->prepare('SELECT variant_label FROM event_items WHERE event_id = :eid AND item_name = :name');
+    $existing->execute(['eid' => $eventId, 'name' => $itemName]);
+    $taken = array_map('strtolower', array_filter($existing->fetchAll(PDO::FETCH_COLUMN)));
+    $insert = $db->prepare('INSERT INTO event_items (event_id, item_name, item_type, variant_label, total_quantity, low_stock_threshold) VALUES (:eid, :name, :type, :variant, :qty, :threshold)');
+    $added = [];
+    $skipped = [];
+    foreach ($sizes as $size => $qty) {
+        if (in_array(strtolower((string) $size), $taken, true)) {
+            $skipped[] = $size;
+            continue;
+        }
+        $insert->execute(['eid' => $eventId, 'name' => $itemName, 'type' => $itemType, 'variant' => $size, 'qty' => $qty,
+            'threshold' => $thresholdInput === '' ? EventItemService::autoThreshold($qty) : max(0, (int) $thresholdInput)]);
+        $added[] = $size . ' (' . $qty . ')';
+    }
+    if ($added) {
+        Logger::log($userId, 'item_added', 'Added "' . $itemName . '" sizes ' . implode(', ', $added) . ' to event #' . $eventId);
+    }
+    flash($added ? 'success' : 'error', ($added ? 'Added ' . $itemName . ': ' . implode(', ', $added) . '.' : 'No sizes were added.')
+        . ($skipped ? ' Already listed, so skipped: ' . implode(', ', $skipped) . ' (edit those instead).' : ''));
+    redirect('organizer-items', ['event_id' => $eventId]);
+}
 
 if ($itemName === '' || $totalQuantity <= 0) {
     flash('error', 'Please provide a valid item name and quantity.');

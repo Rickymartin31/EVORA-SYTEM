@@ -76,9 +76,14 @@ if (!$event) {
     redirect('kit-claim-search');
 }
 
-$itemsStmt = $db->prepare('SELECT * FROM event_items WHERE event_id = :eid ORDER BY item_name');
+$itemsStmt = $db->prepare('SELECT * FROM event_items WHERE event_id = :eid ORDER BY item_name, id');
 $itemsStmt->execute(['eid' => $eventId]);
 $items = $itemsStmt->fetchAll();
+// v73: sizes of one item (same name) share one column; a participant claims only one of them
+$itemGroups = [];
+foreach ($items as $it) {
+    $itemGroups[$it['item_name']][] = $it;
+}
 
 $search = trim($_GET['search'] ?? '');
 $results = [];
@@ -155,7 +160,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
     <div class="table-responsive">
         <table class="table align-middle">
             <thead><tr><th>Participant</th><th>Bib</th><th>Payment</th>
-                <?php foreach ($items as $item): ?><th><?= e($item['item_name']) ?></th><?php endforeach; ?>
+                <?php foreach ($itemGroups as $groupName => $groupItems): ?><th><?= e($groupName) ?></th><?php endforeach; ?>
             </tr></thead>
             <tbody>
             <?php foreach ($results as $r): ?>
@@ -163,21 +168,32 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                     <td><?= e($r['full_name']) ?><?= $r['status'] !== 'approved' ? ' <span class="badge bg-secondary">' . e(ucfirst($r['status'])) . '</span>' : '' ?></td>
                     <td><?= e($r['bib_number'] ?: '—') ?></td>
                     <td><?= $r['payment_ok'] ? '<span class="badge bg-success">Paid</span>' : '<span class="badge bg-danger">Unpaid</span>' ?></td>
-                    <?php foreach ($items as $item): ?>
+                    <?php foreach ($itemGroups as $groupName => $groupItems): ?>
+                        <?php
+                        $claimedItem = null;
+                        foreach ($groupItems as $gi) { if ($r['claims'][$gi['id']]) { $claimedItem = $gi; break; } }
+                        $available = array_values(array_filter($groupItems, fn($gi) => $gi['claimed_quantity'] < $gi['total_quantity']));
+                        ?>
                         <td>
                             <?php if (!$r['payment_ok'] || $r['status'] !== 'approved'): ?>
                                 <span class="text-muted small">—</span>
-                            <?php elseif ($r['claims'][$item['id']]): ?>
-                                <span class="badge bg-success">Claimed</span>
-                            <?php elseif ($item['claimed_quantity'] >= $item['total_quantity']): ?>
+                            <?php elseif ($claimedItem): ?>
+                                <span class="badge bg-success">Claimed<?= $claimedItem['variant_label'] && count($groupItems) > 1 ? ' (' . e($claimedItem['variant_label']) . ')' : '' ?></span>
+                            <?php elseif (!$available): ?>
                                 <span class="badge bg-secondary">Out of stock</span>
                             <?php else: ?>
-                                <form method="post" action="<?= url('kit-claim-search-action') ?>">
+                                <form method="post" action="<?= url('kit-claim-search-action') ?>" class="d-flex gap-1">
                                     <?= Csrf::field() ?>
                                     <input type="hidden" name="event_id" value="<?= $eventId ?>">
                                     <input type="hidden" name="registration_id" value="<?= $r['registration_id'] ?>">
-                                    <input type="hidden" name="item_id" value="<?= $item['id'] ?>">
                                     <input type="hidden" name="search" value="<?= e($search) ?>">
+                                    <?php if (count($groupItems) > 1): ?>
+                                        <select name="item_id" class="form-select form-select-sm" aria-label="Size" style="width:auto">
+                                            <?php foreach ($available as $gi): ?><option value="<?= $gi['id'] ?>"><?= e($gi['variant_label'] ?: $gi['item_name']) ?> (<?= $gi['total_quantity'] - $gi['claimed_quantity'] ?> left)</option><?php endforeach; ?>
+                                        </select>
+                                    <?php else: ?>
+                                        <input type="hidden" name="item_id" value="<?= $available[0]['id'] ?>">
+                                    <?php endif; ?>
                                     <button type="submit" class="btn btn-sm btn-outline-primary">Release</button>
                                 </form>
                             <?php endif; ?>

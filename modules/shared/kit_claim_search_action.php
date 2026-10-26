@@ -79,10 +79,10 @@ if (!$item) {
     redirect('kit-claim-search', ['event_id' => $eventId, 'search' => $search]);
 }
 
-$dupCheck = $db->prepare('SELECT id FROM item_claims WHERE event_item_id = :iid AND registration_id = :rid');
-$dupCheck->execute(['iid' => $itemId, 'rid' => $registrationId]);
-if ($dupCheck->fetch()) {
-    flash('error', $registration['full_name'] . ' has already claimed "' . $item['item_name'] . '".');
+// v73: one item per group, so a participant cannot claim a second size of the same item
+$alreadyClaimed = EventItemService::claimedInGroup($db, $registrationId, $item);
+if ($alreadyClaimed) {
+    flash('error', $registration['full_name'] . ' has already claimed "' . EventItemService::label($alreadyClaimed) . '".');
     redirect('kit-claim-search', ['event_id' => $eventId, 'search' => $search]);
 }
 
@@ -114,5 +114,5 @@ try {
 }
 
 Logger::log($userId, 'item_claimed', $item['item_name'] . ' released to registration #' . $registrationId . ' via search');
-flash('success', $item['item_name'] . ' released to ' . $registration['full_name'] . '.');
+flash('success', EventItemService::label($item) . ' released to ' . $registration['full_name'] . '.');
 redirect('kit-claim-search', ['event_id' => $eventId, 'search' => $search]);

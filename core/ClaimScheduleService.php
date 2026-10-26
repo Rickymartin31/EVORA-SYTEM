@@ -4,7 +4,7 @@
  *
  * The organizer sets one or more claiming days (date, time, place) for an event's items, usually
  * before event day. "Remind Participants to Claim" notifies (bell + email) every participant who
- * can claim and still has an item to collect; on the last claiming day EVORA does the same once,
+ * can claim and still has an item to collect (sizes of one item count as one, v73); on the last claiming day EVORA does the same once,
  * automatically (scripts/participant_jobs.php). Claiming itself is never blocked by the schedule:
  * staff can still release items outside it, e.g. on event day.
  *
@@ -129,7 +129,8 @@ class ClaimScheduleService
                AND (COALESCE(rc.fee, e.fee) <= 0
                     OR EXISTS (SELECT 1 FROM payments pay WHERE pay.registration_id = r.id AND pay.status = "approved"))
                AND EXISTS (SELECT 1 FROM event_items i WHERE i.event_id = r.event_id
-                           AND NOT EXISTS (SELECT 1 FROM item_claims c WHERE c.event_item_id = i.id AND c.registration_id = r.id))'
+                AND NOT EXISTS (SELECT 1 FROM item_claims c JOIN event_items i2 ON i2.id = c.event_item_id
+                                WHERE c.registration_id = r.id AND i2.event_id = i.event_id AND i2.item_name = i.item_name))'
         );
         $stmt->execute(['e' => $eventId]);
 
@@ -146,7 +147,8 @@ class ClaimScheduleService
         $in = implode(',', array_fill(0, count($registrationIds), '?'));
         $stmt = $db->prepare("SELECT r.id FROM registrations r WHERE r.id IN ($in)
             AND EXISTS (SELECT 1 FROM event_items i WHERE i.event_id = r.event_id
-                        AND NOT EXISTS (SELECT 1 FROM item_claims c WHERE c.event_item_id = i.id AND c.registration_id = r.id))");
+                AND NOT EXISTS (SELECT 1 FROM item_claims c JOIN event_items i2 ON i2.id = c.event_item_id
+                                WHERE c.registration_id = r.id AND i2.event_id = i.event_id AND i2.item_name = i.item_name))");
         $stmt->execute($registrationIds);
 
         return array_fill_keys(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)), true);

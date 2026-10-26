@@ -47,6 +47,7 @@ require_once EVORA_ROOT . '/core/AccountService.php';
 require_once EVORA_ROOT . '/core/EventTools.php';
 require_once EVORA_ROOT . '/core/EventAccess.php';
 require_once EVORA_ROOT . '/core/ClaimScheduleService.php';
+require_once EVORA_ROOT . '/core/EventItemService.php';
 require_once EVORA_ROOT . '/core/Router.php';
 require_once EVORA_ROOT . '/core/helpers.php';
 

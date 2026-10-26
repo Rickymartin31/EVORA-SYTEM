@@ -35,6 +35,8 @@ $claimRecipients = count(array_unique(array_column(ClaimScheduleService::recipie
 $lastClaimReminder = ClaimScheduleService::lastReminder($db, $eventId);
 $canRemind = ClaimScheduleService::upcoming($claimSlots) && $itemsList && $claimRecipients > 0 && in_array($event['status'], ClaimScheduleService::ACTIVE_EVENT_STATUSES, true);
 
+$suggested = EventItemService::suggestedQuantity($db, $event); // v73: default quantity for new items
+
 $itemTypeLabels = [
     'kit' => 'Race Kit',
     'shirt' => 'Shirt',
@@ -174,7 +176,15 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
     <div class="col-lg-5">
         <div class="card-evora p-4">
             <h6 class="fw-semibold mb-3"><?= $editItem ? 'Edit Item' : 'Add Item' ?></h6>
-            <form method="post" action="<?= url('organizer-item-save') ?>">
+            <?php if (!$editItem): ?>
+                <div class="small text-muted mb-1">Quick add</div>
+                <div class="d-flex flex-wrap gap-1 mb-3" id="itemPresets">
+                    <?php foreach (EventItemService::PRESETS as $presetLabel => [$presetName, $presetType, $presetSizes]): ?>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-name="<?= e($presetName) ?>" data-type="<?= e($presetType) ?>" data-sizes="<?= $presetSizes ? '1' : '0' ?>">+ <?= e($presetLabel) ?></button>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+            <form method="post" action="<?= url('organizer-item-save') ?>" id="itemForm">
                 <?= Csrf::field() ?>
                 <input type="hidden" name="item_action" value="<?= $editItem ? 'update' : 'create' ?>">
                 <input type="hidden" name="event_id" value="<?= $eventId ?>">
@@ -183,37 +193,96 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                 <?php endif; ?>
                 <div class="mb-2">
                     <label class="form-label small">Item Name *</label>
-                    <input type="text" name="item_name" class="form-control form-control-sm" placeholder="e.g. Race Kit, Event Shirt, Certificate" value="<?= e($editItem['item_name'] ?? '') ?>" required>
+                    <input type="text" name="item_name" id="itemName" class="form-control form-control-sm" placeholder="e.g. Race Kit, Event Shirt, Certificate" value="<?= e($editItem['item_name'] ?? '') ?>" required>
                 </div>
                 <div class="mb-2">
                     <label class="form-label small">Type *</label>
-                    <select name="item_type" class="form-select form-select-sm">
+                    <select name="item_type" id="itemType" class="form-select form-select-sm">
                         <?php foreach ($itemTypeLabels as $key => $label): ?>
                             <option value="<?= $key ?>" <?= ($editItem['item_type'] ?? '') === $key ? 'selected' : '' ?>><?= e($label) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="mb-2">
-                    <label class="form-label small">Variant / Size</label>
-                    <input type="text" name="variant_label" class="form-control form-control-sm" placeholder="e.g. M, L, XL (optional)" value="<?= e($editItem['variant_label'] ?? '') ?>">
-                </div>
-                <div class="mb-2">
+                <?php if ($editItem): ?>
+                    <div class="mb-2">
+                        <label class="form-label small">Size / Variant</label>
+                        <input type="text" name="variant_label" class="form-control form-control-sm" placeholder="e.g. M (optional)" value="<?= e($editItem['variant_label'] ?? '') ?>">
+                    </div>
+                <?php else: ?>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" role="switch" name="use_sizes" value="1" id="useSizes">
+                        <label class="form-check-label small" for="useSizes">This item comes in sizes (e.g. shirts)</label>
+                    </div>
+                    <div id="sizeGrid" class="mb-2" hidden>
+                        <div class="small text-muted mb-1">Quantity per size (leave blank for sizes you don't have)</div>
+                        <div class="row g-1">
+                            <?php foreach (EventItemService::SIZES as $size): ?>
+                                <div class="col-3">
+                                    <label class="form-label small mb-0" for="size_<?= e($size) ?>"><?= e($size) ?></label>
+                                    <input type="number" min="0" name="size_qty[<?= e($size) ?>]" id="size_<?= e($size) ?>" class="form-control form-control-sm size-qty" inputmode="numeric">
+                                </div>
+                            <?php endforeach; ?>
+                            <div class="col-6">
+                                <label class="form-label small mb-0" for="customSize">Other size</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" name="custom_size" id="customSize" class="form-control" maxlength="40" placeholder="e.g. Kids">
+                                    <input type="number" min="0" name="custom_size_qty" class="form-control size-qty" placeholder="Qty" aria-label="Quantity for the other size">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="small mt-1">Total: <span class="fw-semibold" id="sizeTotal">0</span> · each size is listed as its own item, and a participant can claim only one size.</div>
+                    </div>
+                <?php endif; ?>
+                <div class="mb-2" id="qtyBox">
                     <label class="form-label small">Total Quantity *</label>
-                    <input type="number" name="total_quantity" min="1" class="form-control form-control-sm" value="<?= e($editItem['total_quantity'] ?? '') ?>" required>
+                    <input type="number" name="total_quantity" id="totalQty" min="1" class="form-control form-control-sm" value="<?= e($editItem['total_quantity'] ?? ($suggested['quantity'] ?: '')) ?>" required>
                     <?php if ($editItem && (int) $editItem['claimed_quantity'] > 0): ?>
                         <div class="form-text"><?= (int) $editItem['claimed_quantity'] ?> already claimed — total quantity can't be set below this.</div>
+                    <?php elseif (!$editItem && ($suggested['approved'] || $suggested['slots'])): ?>
+                        <div class="form-text"><?= $suggested['approved'] ?> approved participant<?= $suggested['approved'] === 1 ? '' : 's' ?><?= $suggested['slots'] ? ' · ' . $suggested['slots'] . ' slots' : '' ?>. Add a few extra for walk-ins.</div>
                     <?php endif; ?>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label small">Low Stock Alert Threshold</label>
-                    <input type="number" name="low_stock_threshold" min="0" value="<?= e($editItem['low_stock_threshold'] ?? 0) ?>" class="form-control form-control-sm">
-                    <div class="form-text">Flag as low stock when remaining qty drops to this number or below.</div>
-                </div>
+                <details class="mb-3" <?= $editItem ? 'open' : '' ?>>
+                    <summary class="small text-muted">More options</summary>
+                    <label class="form-label small mt-2">Low Stock Alert</label>
+                    <input type="number" name="low_stock_threshold" min="0" value="<?= $editItem ? e($editItem['low_stock_threshold']) : '' ?>" placeholder="Automatic (10% of quantity)" class="form-control form-control-sm">
+                    <div class="form-text">Shows "Low Stock" when the remaining quantity drops to this number. Leave blank for automatic.</div>
+                </details>
                 <button type="submit" class="btn btn-evora-primary btn-sm w-100"><?= $editItem ? 'Update Item' : 'Add Item' ?></button>
                 <?php if ($editItem): ?>
                     <a href="<?= url('organizer-items', ['event_id' => $eventId]) ?>" class="btn btn-outline-secondary btn-sm w-100 mt-2">Cancel</a>
                 <?php endif; ?>
             </form>
+            <?php if (!$editItem): ?>
+            <script>
+            (function () {
+                const name = document.getElementById('itemName'), type = document.getElementById('itemType');
+                const useSizes = document.getElementById('useSizes'), grid = document.getElementById('sizeGrid');
+                const qtyBox = document.getElementById('qtyBox'), qty = document.getElementById('totalQty');
+                function toggleSizes() {
+                    grid.hidden = !useSizes.checked;
+                    qtyBox.hidden = useSizes.checked;
+                    qty.required = !useSizes.checked;
+                    qty.disabled = useSizes.checked;
+                }
+                function total() {
+                    let t = 0;
+                    document.querySelectorAll('.size-qty').forEach(i => { t += parseInt(i.value, 10) || 0; });
+                    document.getElementById('sizeTotal').textContent = t;
+                }
+                useSizes.addEventListener('change', toggleSizes);
+                document.querySelectorAll('.size-qty').forEach(i => i.addEventListener('input', total));
+                document.querySelectorAll('#itemPresets button').forEach(b => b.addEventListener('click', () => {
+                    name.value = b.dataset.name;
+                    type.value = b.dataset.type;
+                    useSizes.checked = b.dataset.sizes === '1';
+                    toggleSizes();
+                    (useSizes.checked ? document.querySelector('.size-qty') : qty).focus();
+                }));
+                toggleSizes();
+            })();
+            </script>
+            <?php endif; ?>
         </div>
     </div>
 </div>

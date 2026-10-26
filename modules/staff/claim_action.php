@@ -81,10 +81,10 @@ if ($item['claimed_quantity'] >= $item['total_quantity']) {
     exit;
 }
 
-$dupCheck = $db->prepare('SELECT id FROM item_claims WHERE event_item_id = :iid AND registration_id = :rid');
-$dupCheck->execute(['iid' => $itemId, 'rid' => $registrationId]);
-if ($dupCheck->fetch()) {
-    echo json_encode(['valid' => false, 'message' => $registration['full_name'] . ' has already claimed "' . $item['item_name'] . '".']);
+// v73: one item per group, so a participant cannot claim a second size of the same item
+$alreadyClaimed = EventItemService::claimedInGroup($db, $registrationId, $item);
+if ($alreadyClaimed) {
+    echo json_encode(['valid' => false, 'message' => $registration['full_name'] . ' has already claimed "' . EventItemService::label($alreadyClaimed) . '".']);
     exit;
 }
 
@@ -121,12 +121,12 @@ NotificationService::safely(function () use ($db, $registrationId, $item) {
     $owner = $db->prepare('SELECT p.user_id, e.name FROM registrations r JOIN participants p ON p.id = r.participant_id JOIN events e ON e.id = r.event_id WHERE r.id = :id');
     $owner->execute(['id' => $registrationId]);
     if ($row = $owner->fetch()) {
-        notify((int) $row['user_id'], 'Item Released', '"' . $item['item_name'] . '" was released to you for "' . $row['name'] . '" at ' . date('g:i A') . '.', 'item_release',
+        notify((int) $row['user_id'], 'Item Released', '"' . EventItemService::label($item) . '" was released to you for "' . $row['name'] . '" at ' . date('g:i A') . '.', 'item_release',
             ['category' => 'event', 'notice_type' => 'status', 'reference_type' => 'registration', 'reference_id' => $registrationId]);
     }
 });
 
 echo json_encode([
     'valid' => true,
-    'message' => $item['item_name'] . ' released to ' . $registration['full_name'] . '.',
+    'message' => EventItemService::label($item) . ' released to ' . $registration['full_name'] . '.',
 ]);

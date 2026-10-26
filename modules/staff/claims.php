@@ -16,7 +16,7 @@ $assignments = $assignmentsStmt->fetchAll();
 
 $itemsByEvent = [];
 foreach ($assignments as $a) {
-    $itemsStmt = $db->prepare('SELECT * FROM event_items WHERE event_id = :eid ORDER BY item_name');
+    $itemsStmt = $db->prepare('SELECT * FROM event_items WHERE event_id = :eid ORDER BY item_name, id');
     $itemsStmt->execute(['eid' => $a['event_id']]);
     $itemsByEvent[$a['event_id']] = $itemsStmt->fetchAll();
 }
@@ -49,7 +49,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                     <?php foreach ($itemsByEvent as $eid => $items): ?>
                         <?php foreach ($items as $item): ?>
                             <option value="<?= $item['id'] ?>" data-event="<?= $eid ?>" class="item-opt-<?= $eid ?>">
-                                <?= e($item['item_name']) ?> (<?= max(0, $item['total_quantity'] - $item['claimed_quantity']) ?> left)
+                                <?= e(EventItemService::label($item)) ?> (<?= max(0, $item['total_quantity'] - $item['claimed_quantity']) ?> left)
                             </option>
                         <?php endforeach; ?>
                     <?php endforeach; ?>
