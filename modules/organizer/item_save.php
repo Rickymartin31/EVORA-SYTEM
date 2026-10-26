@@ -25,11 +25,8 @@ $action = $_POST['item_action'] ?? 'create';
 
 $itemName = trim($_POST['item_name'] ?? '');
 $totalQuantity = (int) ($_POST['total_quantity'] ?? 0);
-$itemType = $_POST['item_type'] ?? 'other';
-$allowedTypes = ['kit', 'shirt', 'bib', 'medal', 'other'];
-if (!in_array($itemType, $allowedTypes, true)) {
-    $itemType = 'other';
-}
+// v75: no Type field any more; the type follows the item name (e.g. "Race Kit" -> kit)
+$itemType = EventItemService::typeFromName($itemName);
 $variantLabel = trim($_POST['variant_label'] ?? '');
 // v74: what is inside, e.g. "T-shirt and race bib"
 $contents = mb_substr(trim((string) ($_POST['contents'] ?? '')), 0, 255);

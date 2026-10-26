@@ -28,6 +28,20 @@ class EventItemService
         return $categorySlug === 'fun-run' ? self::PRESETS_FUN_RUN : self::PRESETS_OTHER;
     }
 
+    /** v75: the item type follows its name, since the form no longer asks for it. */
+    public static function typeFromName(string $name): string
+    {
+        $n = strtolower($name);
+
+        return match (true) {
+            str_contains($n, 'kit') => 'kit',
+            str_contains($n, 'shirt') || str_contains($n, 'jersey') || str_contains($n, 'singlet') => 'shirt',
+            str_contains($n, 'bib') => 'bib',
+            str_contains($n, 'medal') => 'medal',
+            default => 'other',
+        };
+    }
+
     /** "Race Kit (T-shirt and race bib)" for messages; the plain name when nothing is listed inside. */
     public static function nameWithContents(string $name, ?string $contents): string
     {

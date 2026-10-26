@@ -69,13 +69,12 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
             <?php else: ?>
             <div class="table-responsive">
                 <table class="table align-middle table-datatable">
-                    <thead><tr><th>Item</th><th>Type</th><th>Total Qty</th><th>Claimed</th><th>Remaining</th><th></th></tr></thead>
+                    <thead><tr><th>Item</th><th>Total Qty</th><th>Claimed</th><th>Remaining</th><th></th></tr></thead>
                     <tbody>
                     <?php foreach ($itemsList as $item): ?>
                         <?php $remaining = max(0, $item['total_quantity'] - $item['claimed_quantity']); ?>
                         <tr>
                             <td><?= e($item['item_name']) ?><?= $item['variant_label'] ? ' <span class="text-muted small">(' . e($item['variant_label']) . ')</span>' : '' ?><?= !empty($item['contents']) ? '<div class="small text-muted">Includes: ' . e($item['contents']) . '</div>' : '' ?></td>
-                            <td><span class="badge bg-secondary"><?= e($itemTypeLabels[$item['item_type']] ?? 'Other') ?></span></td>
                             <td><?= $item['total_quantity'] ?></td>
                             <td><?= $item['claimed_quantity'] ?></td>
                             <td>
@@ -200,14 +199,6 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                     <input type="text" name="item_name" id="itemName" class="form-control form-control-sm" placeholder="e.g. Race Kit, Event Shirt, Certificate" value="<?= e($editItem['item_name'] ?? '') ?>" required>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label small">Type *</label>
-                    <select name="item_type" id="itemType" class="form-select form-select-sm">
-                        <?php foreach ($itemTypeLabels as $key => $label): ?>
-                            <option value="<?= $key ?>" <?= ($editItem['item_type'] ?? '') === $key ? 'selected' : '' ?>><?= e($label) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="mb-2">
                     <label class="form-label small">What's inside (optional)</label>
                     <input type="text" name="contents" id="itemContents" class="form-control form-control-sm" maxlength="255" placeholder="e.g. T-shirt and race bib" value="<?= e($editItem['contents'] ?? '') ?>">
                 </div>
@@ -264,7 +255,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
             <?php if (!$editItem): ?>
             <script>
             (function () {
-                const name = document.getElementById('itemName'), type = document.getElementById('itemType');
+                const name = document.getElementById('itemName');
                 const useSizes = document.getElementById('useSizes'), grid = document.getElementById('sizeGrid');
                 const qtyBox = document.getElementById('qtyBox'), qty = document.getElementById('totalQty');
                 function toggleSizes() {
@@ -283,7 +274,6 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                 document.querySelectorAll('#itemPresets button').forEach(b => b.addEventListener('click', () => {
                     name.value = b.dataset.name;
                     document.getElementById('itemContents').value = b.dataset.contents || '';
-                    type.value = b.dataset.type;
                     useSizes.checked = b.dataset.sizes === '1';
                     toggleSizes();
                     (useSizes.checked ? document.querySelector('.size-qty') : qty).focus();
