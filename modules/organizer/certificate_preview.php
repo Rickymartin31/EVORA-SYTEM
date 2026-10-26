@@ -35,4 +35,11 @@ $settings = $settingsStmt->fetch();
 $title = (!empty($settings['certificate_title'])) ? $settings['certificate_title'] : $defaultTitle;
 
 $html = CertificateService::previewHtml($db, $eventId, $title, $defaultVerb);
+if ($html !== null) {
+    // v72: the certificate is one fixed A4 page; scale it down to fit the preview frame.
+    $fit = '<style>html,body{overflow:hidden;background:#fff}.page{transform-origin:0 0}</style>'
+        . '<script>function fit(){var p=document.querySelector(".page");if(p){p.style.transform="scale("+Math.min(window.innerWidth/p.offsetWidth,window.innerHeight/p.offsetHeight)+")";}}'
+        . 'window.addEventListener("load",fit);window.addEventListener("resize",fit);</script>';
+    $html = str_replace('</body>', $fit . '</body>', $html);
+}
 echo $html ?? '<p style="font-family:sans-serif;color:#888;text-align:center;padding:40px;">Unable to build a preview.</p>';

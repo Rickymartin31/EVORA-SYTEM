@@ -89,55 +89,68 @@ class CertificateService
             }
             $sigTitle = trim((string) ($settings['signatory' . $n . '_title'] ?? ''));
             $sigImg = self::dataUri($settings['signatory' . $n . '_signature_path'] ?? null);
-            $signatoriesHtml .= '<div class="signatory">'
+            $signatoriesHtml .= '<td class="signatory">'
                 . ($sigImg ? '<img src="' . $sigImg . '" class="sig-img">' : '<div class="sig-space"></div>')
                 . '<div class="sig-name">' . htmlspecialchars($name) . '</div>'
                 . ($sigTitle !== '' ? '<div class="sig-title">' . htmlspecialchars($sigTitle) . '</div>' : '')
-                . '</div>';
+                . '</td>';
         }
 
-        $qrBlock = $qrDataUri ? '<img src="' . $qrDataUri . '" width="70" height="70">' : '';
+        $qrBlock = $qrDataUri ? '<img src="' . $qrDataUri . '" width="78" height="78">' : '';
 
+        // One A4 landscape page (297 x 210 mm) laid out with fixed positions and tables:
+        // Dompdf does not support flexbox, which used to push the QR footer onto a second page.
         return '<html><head><meta charset="utf-8"><style>
-            body { font-family: sans-serif; text-align: center; padding-top: 30px; }
-            .border-frame { border: 10px ' . $theme['border_style'] . ' ' . $theme['primary'] . '; padding: 40px; position: relative; }
-            .brand { margin-bottom: 8px; }
-            .eyebrow { font-size: 11px; letter-spacing: 3px; color: ' . $theme['secondary'] . '; text-transform: uppercase; font-weight: 700; margin: 0 0 6px; }
-            h1 { font-size: 13px; letter-spacing: 4px; color: #888; text-transform: uppercase; margin: 4px 0 0; }
-            h2 { font-size: 30px; margin: 8px 0 16px; color: #1e1b4b; }
-            .name { font-size: 28px; font-weight: bold; margin: 20px 0; border-bottom: 2px solid ' . $theme['primary'] . '; display: inline-block; padding-bottom: 8px; }
-            .detail { font-size: 13px; color: #444; margin-top: 20px; }
-            .description { font-size: 12px; color: #555; margin-top: 14px; font-style: italic; }
-            .signatories { display: flex; justify-content: center; gap: 60px; margin-top: 40px; }
-            .signatory { text-align: center; width: 180px; }
-            .sig-img { max-height: 45px; max-width: 160px; margin-bottom: 2px; }
-            .sig-space { height: 45px; }
-            .sig-name { border-top: 1px solid #999; margin-top: 4px; padding-top: 4px; font-size: 12px; font-weight: 600; }
-            .sig-title { font-size: 10px; color: #777; }
-            .footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; text-align: left; }
-            .cert-meta { font-size: 11px; color: #888; text-align: left; line-height: 1.6; }
-            .cert-meta strong { color: #444; }
+            @page { size: A4 landscape; margin: 0; }
+            html, body { margin: 0; padding: 0; }
+            body { font-family: "DejaVu Sans", sans-serif; color: #1f2937; }
+            .page { position: relative; width: 297mm; height: 209mm; overflow: hidden; background: #fff; }
+            .frame { position: absolute; top: 9mm; left: 9mm; width: 273mm; height: 185mm; border: 7px ' . $theme['border_style'] . ' ' . $theme['primary'] . '; }
+            .inner { position: absolute; top: 3mm; left: 3mm; width: 265mm; height: 177mm; border: 1px solid #d1d5db; }
+            .content { position: absolute; top: 9mm; left: 12mm; width: 241mm; text-align: center; }
+            .brand { margin: 0 0 2mm; }
+            .eyebrow { font-size: 9.5px; letter-spacing: 3px; color: ' . $theme['secondary'] . '; text-transform: uppercase; font-weight: bold; margin: 0 0 1.5mm; }
+            h1 { font-size: 13px; letter-spacing: 4px; color: #6b7280; text-transform: uppercase; margin: 0 0 5mm; font-weight: bold; }
+            .certifies { font-size: 12px; margin: 0; }
+            .name { font-size: 30px; font-weight: bold; color: #111827; margin: 4mm 0 1mm; }
+            .name-line { width: 120mm; margin: 0 auto 4mm; border-top: 2px solid ' . $theme['primary'] . '; }
+            .verb { font-size: 12px; margin: 0 0 3mm; }
+            .event-name { font-size: 17px; font-weight: bold; color: #1e1b4b; margin: 0 0 1.5mm; }
+            .detail { font-size: 11px; color: #4b5563; margin: 0; line-height: 1.5; }
+            .description { font-size: 10.5px; color: #555; margin: 3mm 30mm 0; font-style: italic; line-height: 1.4; }
+            table.signatories { margin: 9mm auto 0; border-collapse: collapse; }
+            td.signatory { text-align: center; width: 62mm; padding: 0 9mm; vertical-align: bottom; }
+            .sig-img { max-height: 14mm; max-width: 50mm; }
+            .sig-space { height: 12mm; }
+            .sig-name { border-top: 1px solid #9ca3af; margin-top: 1mm; padding-top: 1mm; font-size: 11px; font-weight: bold; }
+            .sig-title { font-size: 9px; color: #6b7280; }
+            .footer { position: absolute; bottom: 5mm; left: 8mm; width: 249mm; }
+            .footer table { width: 100%; border-collapse: collapse; }
+            .cert-meta { font-size: 9.5px; color: #6b7280; text-align: left; line-height: 1.6; vertical-align: bottom; }
+            .cert-meta strong { color: #374151; }
+            .qr { text-align: right; vertical-align: bottom; }
         </style></head><body>
-            <div class="border-frame">
-                <div class="brand">' . $logoImg . '</div>
-                <p class="eyebrow">' . $theme['eyebrow'] . '</p>
-                <h1>' . htmlspecialchars($displayTitle) . '</h1>
-                <p>This certifies that</p>
-                <div class="name">' . htmlspecialchars($reg['participant_name']) . '</div>
-                <p>' . htmlspecialchars($bodyVerb) . '</p>
-                <p class="detail"><strong>' . htmlspecialchars($reg['event_name']) . '</strong><br>
-                held on ' . date('F d, Y', strtotime($reg['event_date'])) . ($venue !== '' ? ' at ' . htmlspecialchars($venue) : '') . '<br>
-                organized by ' . htmlspecialchars($organizerName) . ($orgName !== '' ? ' (' . htmlspecialchars($orgName) . ')' : '') . '</p>
-                ' . ($description !== '' ? '<p class="description">' . nl2br(htmlspecialchars($description)) . '</p>' : '') . '
-                ' . ($signatoriesHtml !== '' ? '<div class="signatories">' . $signatoriesHtml . '</div>' : '') . '
-                <div class="footer">
-                    <div class="cert-meta">
-                        <strong>Certificate ID:</strong> ' . htmlspecialchars($certificateNumber) . '<br>
-                        <strong>Date Issued:</strong> ' . htmlspecialchars($issuedAt) . '
-                    </div>
-                    ' . $qrBlock . '
+            <div class="page"><div class="frame"><div class="inner">
+                <div class="content">
+                    <div class="brand">' . $logoImg . '</div>
+                    <p class="eyebrow">' . $theme['eyebrow'] . '</p>
+                    <h1>' . htmlspecialchars($displayTitle) . '</h1>
+                    <p class="certifies">This certifies that</p>
+                    <div class="name">' . htmlspecialchars($reg['participant_name']) . '</div>
+                    <div class="name-line"></div>
+                    <p class="verb">' . htmlspecialchars($bodyVerb) . '</p>
+                    <p class="event-name">' . htmlspecialchars($reg['event_name']) . '</p>
+                    <p class="detail">held on ' . date('F d, Y', strtotime($reg['event_date'])) . ($venue !== '' ? ' at ' . htmlspecialchars($venue) : '') . '<br>
+                    organized by ' . htmlspecialchars($organizerName) . ($orgName !== '' ? ' (' . htmlspecialchars($orgName) . ')' : '') . '</p>
+                    ' . ($description !== '' ? '<p class="description">' . nl2br(htmlspecialchars(mb_substr($description, 0, 400))) . '</p>' : '') . '
+                    ' . ($signatoriesHtml !== '' ? '<table class="signatories"><tr>' . $signatoriesHtml . '</tr></table>' : '') . '
                 </div>
-            </div>
+                <div class="footer"><table><tr>
+                    <td class="cert-meta"><strong>Certificate ID:</strong> ' . htmlspecialchars($certificateNumber) . '<br>
+                        <strong>Date Issued:</strong> ' . htmlspecialchars($issuedAt) . '</td>
+                    <td class="qr">' . $qrBlock . '</td>
+                </tr></table></div>
+            </div></div></div>
         </body></html>';
     }
 
@@ -231,6 +244,64 @@ class CertificateService
         notify((int) $reg['user_id'], 'Certificate Issued', 'Your certificate for "' . $reg['event_name'] . '" is ready to download.', 'certificate_issued');
 
         return true;
+    }
+
+    /**
+     * Re-renders the PDF of an already issued certificate with the current template, keeping
+     * its certificate number, verification token (so the QR code still verifies), type and
+     * issue date. The file is rewritten in place; nothing else changes. Used to move
+     * certificates issued with the old two-page layout to the one-page layout.
+     */
+    public static function regenerate(PDO $db, int $certificateId): bool
+    {
+        $stmt = $db->prepare('SELECT * FROM certificates WHERE id = :id');
+        $stmt->execute(['id' => $certificateId]);
+        $cert = $stmt->fetch();
+        if (!$cert || empty($cert['certificate_path'])) {
+            return false;
+        }
+        $ctx = $db->prepare(
+            'SELECT r.id, r.event_id, u.full_name AS participant_name, e.name AS event_name, e.event_date, e.venue,
+                c.slug AS category_slug, orgu.full_name AS organizer_name, o.organization_name
+             FROM registrations r
+             JOIN events e ON e.id = r.event_id
+             JOIN event_categories c ON c.id = e.category_id
+             JOIN participants p ON p.id = r.participant_id
+             JOIN users u ON u.id = p.user_id
+             JOIN organizers o ON o.id = e.organizer_id
+             JOIN users orgu ON orgu.id = o.user_id
+             WHERE r.id = :rid'
+        );
+        $ctx->execute(['rid' => $cert['registration_id']]);
+        $reg = $ctx->fetch();
+        if (!$reg) {
+            return false;
+        }
+        $title = (string) ($cert['certificate_type'] ?: 'Certificate of Participation');
+        $verb = match (true) {
+            stripos($title, 'Completion') !== false => 'has successfully completed',
+            stripos($title, 'Achievement') !== false => 'achieved a top finish in',
+            stripos($title, 'Attendance') !== false => 'attended',
+            default => 'has successfully participated in',
+        };
+        $verifyUrl = siteOrigin() . BASE_URL . '/index.php?route=certificate-verify&token=' . $cert['verification_token'];
+        $qr = Builder::create()->writer(new PngWriter())->data($verifyUrl)->size(130)->margin(6)->build();
+        $html = self::buildHtml($title, $verb, $reg, self::fetchSettings($db, (int) $reg['event_id']), (string) $cert['certificate_number'],
+            date('F d, Y', strtotime((string) $cert['issued_at'])), $qr->getDataUri());
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', false);
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $file = STORAGE_PATH . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, (string) $cert['certificate_path']);
+        if (!is_dir(dirname($file))) {
+            mkdir(dirname($file), 0755, true);
+        }
+
+        return file_put_contents($file, $dompdf->output()) !== false;
     }
 
     /**
