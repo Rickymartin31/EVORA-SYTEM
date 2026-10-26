@@ -128,5 +128,6 @@ NotificationService::safely(function () use ($db, $registrationId, $item) {
 
 echo json_encode([
     'valid' => true,
-    'message' => EventItemService::label($item) . ' released to ' . $registration['full_name'] . '.',
+    // v74: the bib number, so staff hand out the right bib with the race kit
+    'message' => EventItemService::label($item) . ' released to ' . $registration['full_name'] . (!empty($registration['bib_number']) ? ' · Bib ' . $registration['bib_number'] : '') . '.',
 ]);

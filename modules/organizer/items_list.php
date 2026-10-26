@@ -36,6 +36,10 @@ $lastClaimReminder = ClaimScheduleService::lastReminder($db, $eventId);
 $canRemind = ClaimScheduleService::upcoming($claimSlots) && $itemsList && $claimRecipients > 0 && in_array($event['status'], ClaimScheduleService::ACTIVE_EVENT_STATUSES, true);
 
 $suggested = EventItemService::suggestedQuantity($db, $event); // v73: default quantity for new items
+// v74: quick-add buttons depend on the event type (a fun run hands out one race kit)
+$catStmt = $db->prepare('SELECT slug FROM event_categories WHERE id = :id');
+$catStmt->execute(['id' => $event['category_id']]);
+$itemPresets = EventItemService::presetsFor($catStmt->fetchColumn() ?: null);
 
 $itemTypeLabels = [
     'kit' => 'Race Kit',
@@ -70,7 +74,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                     <?php foreach ($itemsList as $item): ?>
                         <?php $remaining = max(0, $item['total_quantity'] - $item['claimed_quantity']); ?>
                         <tr>
-                            <td><?= e($item['item_name']) ?><?= $item['variant_label'] ? ' <span class="text-muted small">(' . e($item['variant_label']) . ')</span>' : '' ?></td>
+                            <td><?= e($item['item_name']) ?><?= $item['variant_label'] ? ' <span class="text-muted small">(' . e($item['variant_label']) . ')</span>' : '' ?><?= !empty($item['contents']) ? '<div class="small text-muted">Includes: ' . e($item['contents']) . '</div>' : '' ?></td>
                             <td><span class="badge bg-secondary"><?= e($itemTypeLabels[$item['item_type']] ?? 'Other') ?></span></td>
                             <td><?= $item['total_quantity'] ?></td>
                             <td><?= $item['claimed_quantity'] ?></td>
@@ -179,8 +183,8 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
             <?php if (!$editItem): ?>
                 <div class="small text-muted mb-1">Quick add</div>
                 <div class="d-flex flex-wrap gap-1 mb-3" id="itemPresets">
-                    <?php foreach (EventItemService::PRESETS as $presetLabel => [$presetName, $presetType, $presetSizes]): ?>
-                        <button type="button" class="btn btn-sm btn-outline-primary" data-name="<?= e($presetName) ?>" data-type="<?= e($presetType) ?>" data-sizes="<?= $presetSizes ? '1' : '0' ?>">+ <?= e($presetLabel) ?></button>
+                    <?php foreach ($itemPresets as $presetLabel => [$presetName, $presetType, $presetSizes, $presetContents]): ?>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-name="<?= e($presetName) ?>" data-type="<?= e($presetType) ?>" data-sizes="<?= $presetSizes ? '1' : '0' ?>" data-contents="<?= e($presetContents) ?>">+ <?= e($presetLabel) ?></button>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
@@ -203,6 +207,10 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <div class="mb-2">
+                    <label class="form-label small">What's inside (optional)</label>
+                    <input type="text" name="contents" id="itemContents" class="form-control form-control-sm" maxlength="255" placeholder="e.g. T-shirt and race bib" value="<?= e($editItem['contents'] ?? '') ?>">
+                </div>
                 <?php if ($editItem): ?>
                     <div class="mb-2">
                         <label class="form-label small">Size / Variant</label>
@@ -211,7 +219,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                 <?php else: ?>
                     <div class="form-check form-switch mb-2">
                         <input class="form-check-input" type="checkbox" role="switch" name="use_sizes" value="1" id="useSizes">
-                        <label class="form-check-label small" for="useSizes">This item comes in sizes (e.g. shirts)</label>
+                        <label class="form-check-label small" for="useSizes">This item comes in sizes (e.g. the shirt in a race kit)</label>
                     </div>
                     <div id="sizeGrid" class="mb-2" hidden>
                         <div class="small text-muted mb-1">Quantity per size (leave blank for sizes you don't have)</div>
@@ -274,6 +282,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                 document.querySelectorAll('.size-qty').forEach(i => i.addEventListener('input', total));
                 document.querySelectorAll('#itemPresets button').forEach(b => b.addEventListener('click', () => {
                     name.value = b.dataset.name;
+                    document.getElementById('itemContents').value = b.dataset.contents || '';
                     type.value = b.dataset.type;
                     useSizes.checked = b.dataset.sizes === '1';
                     toggleSizes();

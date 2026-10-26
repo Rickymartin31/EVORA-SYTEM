@@ -31,6 +31,8 @@ if (!in_array($itemType, $allowedTypes, true)) {
     $itemType = 'other';
 }
 $variantLabel = trim($_POST['variant_label'] ?? '');
+// v74: what is inside, e.g. "T-shirt and race bib"
+$contents = mb_substr(trim((string) ($_POST['contents'] ?? '')), 0, 255);
 // v73: a blank low-stock alert means "automatic" (10% of the quantity)
 $thresholdInput = trim((string) ($_POST['low_stock_threshold'] ?? ''));
 $lowStockThreshold = $thresholdInput === '' ? EventItemService::autoThreshold(max(1, $totalQuantity)) : max(0, (int) $thresholdInput);
@@ -56,7 +58,7 @@ if ($action === 'create' && !empty($_POST['use_sizes'])) {
     $existing = $db->prepare('SELECT variant_label FROM event_items WHERE event_id = :eid AND item_name = :name');
     $existing->execute(['eid' => $eventId, 'name' => $itemName]);
     $taken = array_map('strtolower', array_filter($existing->fetchAll(PDO::FETCH_COLUMN)));
-    $insert = $db->prepare('INSERT INTO event_items (event_id, item_name, item_type, variant_label, total_quantity, low_stock_threshold) VALUES (:eid, :name, :type, :variant, :qty, :threshold)');
+    $insert = $db->prepare('INSERT INTO event_items (event_id, item_name, item_type, variant_label, contents, total_quantity, low_stock_threshold) VALUES (:eid, :name, :type, :variant, :contents, :qty, :threshold)');
     $added = [];
     $skipped = [];
     foreach ($sizes as $size => $qty) {
@@ -64,7 +66,7 @@ if ($action === 'create' && !empty($_POST['use_sizes'])) {
             $skipped[] = $size;
             continue;
         }
-        $insert->execute(['eid' => $eventId, 'name' => $itemName, 'type' => $itemType, 'variant' => $size, 'qty' => $qty,
+        $insert->execute(['eid' => $eventId, 'name' => $itemName, 'type' => $itemType, 'variant' => $size, 'contents' => $contents !== '' ? $contents : null, 'qty' => $qty,
             'threshold' => $thresholdInput === '' ? EventItemService::autoThreshold($qty) : max(0, (int) $thresholdInput)]);
         $added[] = $size . ' (' . $qty . ')';
     }
@@ -96,12 +98,12 @@ if ($action === 'update') {
     }
 
     $stmt = $db->prepare(
-        'UPDATE event_items SET item_name = :name, item_type = :type, variant_label = :variant,
+        'UPDATE event_items SET item_name = :name, item_type = :type, variant_label = :variant, contents = :contents,
             total_quantity = :qty, low_stock_threshold = :threshold
          WHERE id = :id AND event_id = :eid'
     );
     $stmt->execute([
-        'name' => $itemName, 'type' => $itemType, 'variant' => $variantLabel ?: null,
+        'name' => $itemName, 'type' => $itemType, 'variant' => $variantLabel ?: null, 'contents' => $contents !== '' ? $contents : null,
         'qty' => $totalQuantity, 'threshold' => $lowStockThreshold, 'id' => $itemId, 'eid' => $eventId,
     ]);
     Logger::log($userId, 'item_updated', 'Updated item "' . $itemName . '" for event #' . $eventId);
@@ -109,10 +111,10 @@ if ($action === 'update') {
     redirect('organizer-items', ['event_id' => $eventId]);
 }
 
-$stmt = $db->prepare('INSERT INTO event_items (event_id, item_name, item_type, variant_label, total_quantity, low_stock_threshold) VALUES (:eid, :name, :type, :variant, :qty, :threshold)');
+$stmt = $db->prepare('INSERT INTO event_items (event_id, item_name, item_type, variant_label, contents, total_quantity, low_stock_threshold) VALUES (:eid, :name, :type, :variant, :contents, :qty, :threshold)');
 $stmt->execute([
     'eid' => $eventId, 'name' => $itemName, 'type' => $itemType,
-    'variant' => $variantLabel ?: null, 'qty' => $totalQuantity, 'threshold' => $lowStockThreshold,
+    'variant' => $variantLabel ?: null, 'contents' => $contents !== '' ? $contents : null, 'qty' => $totalQuantity, 'threshold' => $lowStockThreshold,
 ]);
 
 Logger::log($userId, 'item_added', 'Added item "' . $itemName . '" to event #' . $eventId);

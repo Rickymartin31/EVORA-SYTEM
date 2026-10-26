@@ -114,5 +114,5 @@ try {
 }
 
 Logger::log($userId, 'item_claimed', $item['item_name'] . ' released to registration #' . $registrationId . ' via search');
-flash('success', EventItemService::label($item) . ' released to ' . $registration['full_name'] . '.');
+flash('success', EventItemService::label($item) . ' released to ' . $registration['full_name'] . (!empty($registration['bib_number']) ? ' · Bib ' . $registration['bib_number'] : '') . '.');
 redirect('kit-claim-search', ['event_id' => $eventId, 'search' => $search]);

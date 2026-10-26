@@ -264,9 +264,11 @@ class ClaimScheduleService
 
     private static function notifyAll(PDO $db, array $event, array $slots, array $recipients, bool $lastDay): int
     {
-        $items = $db->prepare('SELECT DISTINCT item_name FROM event_items WHERE event_id = :e ORDER BY item_name');
+        // v74: "Race Kit (T-shirt and race bib)" when the organizer listed what is inside
+        $items = $db->prepare('SELECT item_name, MAX(contents) AS contents FROM event_items WHERE event_id = :e GROUP BY item_name ORDER BY item_name');
         $items->execute(['e' => $event['id']]);
-        $message = self::message($event, $slots, $items->fetchAll(PDO::FETCH_COLUMN), $lastDay);
+        $names = array_map(fn($i) => $i['item_name'] . (trim((string) $i['contents']) !== '' ? ' (' . trim((string) $i['contents']) . ')' : ''), $items->fetchAll());
+        $message = self::message($event, $slots, $names, $lastDay);
         $title = $lastDay ? 'Last Day to Claim Your Event Items' : 'Claim Your Event Items';
         $sentTo = [];
         foreach ($recipients as $r) {

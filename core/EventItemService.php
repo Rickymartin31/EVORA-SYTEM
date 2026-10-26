@@ -5,17 +5,36 @@
  * Sizes: an item added with sizes is stored as one row per size with the same item_name and the
  * size in variant_label (e.g. "Event Shirt" / "M"). Rows of one event with the same item_name form
  * a group, and a participant can claim only ONE item of a group (one shirt, in their size).
+ * v74: items can say what is inside (event_items.contents), e.g. "T-shirt and race bib".
  */
 class EventItemService
 {
-    /** Quick-add buttons: label => [item name, type, uses sizes]. */
-    public const PRESETS = [
-        'Race Kit' => ['Race Kit', 'kit', false],
-        'Event Shirt' => ['Event Shirt', 'shirt', true],
-        'Finisher Medal' => ['Finisher Medal', 'medal', false],
-        'Race Bib' => ['Race Bib', 'bib', false],
-        'Certificate' => ['Certificate', 'other', false],
+    /**
+     * Quick-add buttons: label => [item name, type, uses sizes, what's inside].
+     * v74: a fun run hands out ONE race kit (T-shirt in the runner's size + race bib) before the
+     * race; finisher medals are handed out at the finish line and are not tracked in EVORA.
+     */
+    public const PRESETS_FUN_RUN = [
+        'Race Kit' => ['Race Kit', 'kit', true, 'T-shirt and race bib'],
     ];
+    public const PRESETS_OTHER = [
+        'Event Shirt' => ['Event Shirt', 'shirt', true, ''],
+        'Event Kit' => ['Event Kit', 'kit', false, ''],
+        'Certificate' => ['Certificate', 'other', false, ''],
+    ];
+
+    public static function presetsFor(?string $categorySlug): array
+    {
+        return $categorySlug === 'fun-run' ? self::PRESETS_FUN_RUN : self::PRESETS_OTHER;
+    }
+
+    /** "Race Kit (T-shirt and race bib)" for messages; the plain name when nothing is listed inside. */
+    public static function nameWithContents(string $name, ?string $contents): string
+    {
+        $contents = trim((string) $contents);
+
+        return $name . ($contents !== '' ? ' (' . $contents . ')' : '');
+    }
 
     public const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
 
