@@ -20,6 +20,8 @@ foreach ($assignments as $a) {
     $itemsStmt->execute(['eid' => $a['event_id']]);
     $itemsByEvent[$a['event_id']] = $itemsStmt->fetchAll();
 }
+// v71: the claiming schedule set by the organizer (items can still be released outside it)
+$schedulesByEvent = ClaimScheduleService::slotsForEvents($db, array_column($assignments, 'event_id'));
 
 $pageDescription = 'Release event kits and items to participants.';
 $pageTitle = 'Item Releasing';
@@ -53,6 +55,21 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                     <?php endforeach; ?>
                 </select>
             </div>
+            <?php foreach ($assignments as $a): $slots = ClaimScheduleService::upcoming($schedulesByEvent[(int) $a['event_id']] ?? []); ?>
+                <div class="claim-sched small mb-3" data-event="<?= (int) $a['event_id'] ?>" hidden>
+                    <?php if ($slots): ?>
+                        <div class="fw-semibold mb-1"><i class="bi bi-calendar-check me-1" aria-hidden="true"></i>Claiming schedule</div>
+                        <ul class="mb-1 ps-3">
+                            <?php foreach ($slots as $slot): ?>
+                                <li<?= $slot['claim_date'] === date('Y-m-d') ? ' class="fw-semibold"' : '' ?>><?= e(ClaimScheduleService::slotWhen($slot)) ?> · <?= e($slot['location']) ?><?= $slot['claim_date'] === date('Y-m-d') ? ' <span class="badge bg-success">Today</span>' : '' ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                        <div class="text-muted">Items can still be released outside these times, including on event day.</div>
+                    <?php else: ?>
+                        <div class="text-muted"><i class="bi bi-calendar me-1" aria-hidden="true"></i>No upcoming claiming schedule.</div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
             <div id="qr-reader" style="width:100%;"></div>
             <div class="mt-3">
                 <label class="form-label small">Or enter QR text manually</label>
@@ -85,6 +102,7 @@ function filterItems() {
     document.querySelectorAll('#itemSelect option').forEach(opt => {
         opt.hidden = opt.dataset.event !== eventId;
     });
+    document.querySelectorAll('.claim-sched').forEach(el => { el.hidden = el.dataset.event !== eventId; });
     const firstVisible = document.querySelector(`#itemSelect option[data-event="${eventId}"]`);
     document.getElementById('itemSelect').value = firstVisible ? firstVisible.value : '';
 }

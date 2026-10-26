@@ -36,6 +36,7 @@ require_once EVORA_ROOT . '/core/NotificationService.php';
 require_once EVORA_ROOT . '/core/MailService.php';
 require_once EVORA_ROOT . '/core/WaitlistService.php';
 require_once EVORA_ROOT . '/core/ParticipantToolsService.php';
+require_once EVORA_ROOT . '/core/ClaimScheduleService.php';
 require_once EVORA_ROOT . '/core/helpers.php';
 require_once EVORA_ROOT . '/core/MaintenanceService.php';
 
@@ -50,5 +51,6 @@ $expired = EventLifecycleService::expireUnpaidAfterEvent($db);
 $unpaidReminders = EventLifecycleService::remindUnpaid($db);
 $offers = WaitlistService::process($db);
 $sent = ParticipantToolsService::sendReminders($db);
-echo 'Waitlist offers: ' . $offers . ', reminders: ' . $sent['event_tomorrow'] . ' event-tomorrow, ' . $sent['saved_deadline_soon'] . " saved-deadline\n";
+$claimReminders = ClaimScheduleService::sendAutomaticReminders($db); // v71: last claiming day
+echo 'Waitlist offers: ' . $offers . ', reminders: ' . $sent['event_tomorrow'] . ' event-tomorrow, ' . $sent['saved_deadline_soon'] . ' saved-deadline, ' . $claimReminders . " kit-claim last-day\n";
 echo 'Events completed: ' . count($completed) . ($completed ? ' (#' . implode(', #', $completed) . ')' : '') . ', unpaid closed after event: ' . $expired . ', unpaid reminders: ' . $unpaidReminders . "\n";

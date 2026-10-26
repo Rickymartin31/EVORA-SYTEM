@@ -31,6 +31,9 @@ $stmt->execute(['pid' => $participant['id'] ?? 0]);
 $registrations = $stmt->fetchAll();
 // Refunds per registration, newest first.
 $refunds = RefundService::forParticipant($db, (int) ($participant['id'] ?? 0));
+// v71: when and where to claim the race kit / items, and whether this registration still has items to claim
+$claimSlotsByEvent = ClaimScheduleService::slotsForEvents($db, array_column($registrations, 'event_id'));
+$unclaimedRegs = ClaimScheduleService::unclaimedRegistrations($db, array_column(array_filter($registrations, fn($r) => $r['status'] === 'approved'), 'id'));
 
 $pageDescription = 'Registration, payment, QR and refund status for each event.';
 $pageTitle = 'My Registrations';
@@ -103,6 +106,20 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                                     <span class="text-muted small">Not issued</span>
                                 <?php endif; ?>
                             </div>
+                            <?php $allKitSlots = $claimSlotsByEvent[(int) $r['event_id']] ?? []; $kitSlots = ClaimScheduleService::upcoming($allKitSlots); ?>
+                            <?php if ($allKitSlots && $r['status'] === 'approved' && $r['event_date'] >= date('Y-m-d')): ?>
+                                <div class="status-line"><span class="status-key">Event items</span>
+                                    <?php if (isset($unclaimedRegs[(int) $r['id']])): ?><span class="badge bg-warning text-dark">To claim</span><?php else: ?><span class="text-success small"><i class="bi bi-check-circle" aria-hidden="true"></i> Claimed</span><?php endif; ?>
+                                </div>
+                                <?php if (isset($unclaimedRegs[(int) $r['id']])): ?>
+                                    <div class="small text-muted ps-1">
+                                        <?php foreach ($kitSlots as $slot): ?>
+                                            <div><i class="bi bi-calendar-check me-1" aria-hidden="true"></i><?= e(ClaimScheduleService::slotWhen($slot)) ?> · <?= e($slot['location']) ?></div>
+                                        <?php endforeach; ?>
+                                        <div><?= $kitSlots ? 'Bring your QR code. You can still claim on event day.' : 'The claiming days have passed. You can still claim on event day; bring your QR code.' ?></div>
+                                    </div>
+                                <?php endif; ?>
+                            <?php endif; ?>
                             <?php if ($r['payment_channel'] === 'paypal' && $r['payment_status'] === 'approved'): ?><div class="small text-muted mt-1"><i class="bi bi-info-circle" aria-hidden="true"></i> Paid directly to the organizer through PayPal. If this registration is cancelled, the organizer refunds you from PayPal — follow it on <a href="<?= url('my-payments') ?>">Payments &amp; Receipts</a>.</div><?php endif; ?>
                             <?php foreach ($regRefunds as $i => $rf): if ($rf['status'] === 'rejected' && $i > 0) continue; // older rejections hidden ?>
                                 <div class="status-line"><span class="status-key">Refund</span><?= RefundService::badge($rf['status']) ?><span class="small text-muted"><?= RefundService::number((int) $rf['id']) ?></span></div>

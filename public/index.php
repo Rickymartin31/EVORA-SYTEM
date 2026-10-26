@@ -46,6 +46,7 @@ require_once EVORA_ROOT . '/core/EvaluationService.php';
 require_once EVORA_ROOT . '/core/AccountService.php';
 require_once EVORA_ROOT . '/core/EventTools.php';
 require_once EVORA_ROOT . '/core/EventAccess.php';
+require_once EVORA_ROOT . '/core/ClaimScheduleService.php';
 require_once EVORA_ROOT . '/core/Router.php';
 require_once EVORA_ROOT . '/core/helpers.php';
 
@@ -145,6 +146,8 @@ $router->get('organizer-registrations', EVORA_ROOT . '/modules/organizer/registr
 $router->get('organizer-registration-action', EVORA_ROOT . '/modules/organizer/registration_action.php');
 $router->get('organizer-items', EVORA_ROOT . '/modules/organizer/items_list.php');
 $router->get('organizer-item-save', EVORA_ROOT . '/modules/organizer/item_save.php');
+$router->get('organizer-claim-schedule-save', EVORA_ROOT . '/modules/organizer/claim_schedule_save.php');
+$router->get('organizer-claim-remind', EVORA_ROOT . '/modules/organizer/claim_remind.php');
 $router->get('organizer-teams', EVORA_ROOT . '/modules/organizer/teams_list.php');
 $router->get('organizer-team-save', EVORA_ROOT . '/modules/organizer/team_save.php');
 $router->get('organizer-matches', EVORA_ROOT . '/modules/organizer/matches_list.php');
