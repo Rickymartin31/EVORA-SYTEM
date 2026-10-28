@@ -709,6 +709,8 @@ a.stat-card:hover {
 .account-dl dd { font-size: .9rem; margin-bottom: .6rem; }
 .account-toggle { cursor: pointer; }
 .account-toggle .form-check-input { width: 2.4em; height: 1.25em; cursor: pointer; }
+.account-toggle > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.account-toggle > .form-switch { flex-shrink: 0; }
 
 /* =====================================================================
    v34 component layer — consistent buttons, cards, badges, tables,
@@ -816,6 +818,11 @@ a:hover { color: var(--evora-primary-dark); }
   font-size: 1.15rem;
 }
 .quick-action .qa-sub { display: block; font-weight: 400; font-size: .78rem; color: var(--evora-text-muted); }
+.quick-action > span:not(.qa-icon) { min-width: 0; overflow-wrap: break-word; }
+/* Narrow phones: icon above the text so long words ("Registrations") stay inside the card */
+@media (max-width: 400px) {
+  .quick-action { flex-direction: column; align-items: flex-start; gap: .5rem; padding: .75rem; }
+}
 .quick-action.qa-primary { background: var(--evora-primary); border-color: var(--evora-primary); color: #fff; }
 .quick-action.qa-primary .qa-icon { background: rgba(255,255,255,.18); color: #fff; }
 .quick-action.qa-primary .qa-sub { color: rgba(255,255,255,.85); }
@@ -1760,7 +1767,7 @@ a.match-card-link.is-live:hover { box-shadow: inset 3px 0 0 var(--evora-danger),
 @media (max-width: 575.98px) {
   table.table-stack thead { display: none; }
   table.table-stack { --bs-table-bg: transparent; --bs-table-striped-bg: transparent; --bs-table-hover-bg: transparent; --bs-table-accent-bg: transparent; }
-  table.table-stack > tbody > tr > td { background-color: transparent !important; }
+  table.table-stack > tbody > tr > td { background-color: transparent !important; overflow-wrap: anywhere; }
   table.table-stack, table.table-stack > tbody, table.table-stack > tbody > tr, table.table-stack > tbody > tr > td { display: block; width: 100% !important; }
   table.table-stack > tbody > tr {
     border: 1px solid var(--evora-border); border-radius: var(--evora-radius-sm);
@@ -2291,14 +2298,18 @@ a .stat-card, a.stat-card { cursor: pointer; }
 }
 
 /* v63 sign-up: choose Participant or Organizer */
-.account-type-switch { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding: .3rem; border-radius: 14px; background: var(--evora-primary-soft); }
-.account-type-option { display: flex; align-items: center; gap: .6rem; padding: .6rem .75rem; border-radius: 10px; color: var(--evora-text); text-decoration: none; border: 1px solid transparent; transition: background-color .15s ease, box-shadow .15s ease, color .15s ease; }
+.account-type-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; padding: .3rem; border-radius: 14px; background: var(--evora-primary-soft); }
+.account-type-option { display: flex; align-items: center; gap: .6rem; min-width: 0; padding: .6rem .75rem; border-radius: 10px; color: var(--evora-text); text-decoration: none; border: 1px solid transparent; transition: background-color .15s ease, box-shadow .15s ease, color .15s ease; }
 .account-type-option .bi { font-size: 1.25rem; color: var(--evora-primary); }
-.account-type-option span { display: flex; flex-direction: column; line-height: 1.15; }
+.account-type-option span { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; overflow-wrap: anywhere; }
 .account-type-option small { color: var(--evora-text-muted); font-size: .75rem; }
 .account-type-option:hover { color: var(--evora-primary); background: rgba(255,255,255,.55); }
 .account-type-option.is-active { background: var(--evora-surface, #fff); border-color: var(--evora-border); box-shadow: var(--evora-shadow-sm); }
 [data-theme="dark"] .account-type-option:hover { background: rgba(255,255,255,.06); }
+@media (max-width: 400px) {
+  .account-type-option { flex-direction: column; justify-content: center; gap: .15rem; padding: .5rem .35rem; text-align: center; }
+  .account-type-option span { align-items: center; }
+}
 
 /* v64 touch feel: press, ripple, rise-in */
 .btn:not(.btn-link):not(.btn-close), .quick-action, .bottom-nav a, .list-group-item-action, .account-type-option, .event-type-card, .back-link, .evora-sidebar .nav-link { -webkit-tap-highlight-color: transparent; }
@@ -2370,3 +2381,8 @@ a .stat-card:active, a.stat-card:active { transform: scale(.97) !important; filt
 .gps-steps { padding-left: 1.2rem; }
 .gps-steps li { margin-bottom: .45rem; }
 .gps-howto { border: 1px solid var(--evora-border); border-radius: 12px; padding: .9rem 1rem .5rem; background: var(--evora-primary-soft); }
+
+/* v76 narrow phones (320px): calendar weekday headers fit their columns */
+@media (max-width: 400px) {
+  .fc .fc-col-header-cell-cushion { padding: 2px 0; font-size: .68rem; letter-spacing: 0; }
+}

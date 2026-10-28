@@ -610,7 +610,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                 <?php foreach ($toolGroups['before'] as $tool): ?>
                     <div class="col-6">
                         <a href="<?= url($tool['route'], ['event_id' => $event['id']]) ?>" class="text-decoration-none" title="<?= e($tool['description'] ?? '') ?>">
-                            <div class="card-evora p-3 text-center h-100"><i class="bi <?= e($tool['icon']) ?> fs-4 text-primary"></i><div class="small mt-1 text-dark"><?= e($tool['label']) ?></div></div>
+                            <div class="card-evora p-2 p-sm-3 text-center h-100"><i class="bi <?= e($tool['icon']) ?> fs-4 text-primary"></i><div class="small mt-1 text-dark text-break"><?= e($tool['label']) ?></div></div>
                         </a>
                     </div>
                 <?php endforeach; ?>
@@ -625,7 +625,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                 <?php foreach ($toolGroups['during'] as $tool): ?>
                     <div class="col-6">
                         <a href="<?= url($tool['route'], ['event_id' => $event['id']]) ?>" class="text-decoration-none" title="<?= e($tool['description'] ?? '') ?>">
-                            <div class="card-evora p-3 text-center h-100"><i class="bi <?= e($tool['icon']) ?> fs-4 text-primary"></i><div class="small mt-1 text-dark"><?= e($tool['label']) ?></div></div>
+                            <div class="card-evora p-2 p-sm-3 text-center h-100"><i class="bi <?= e($tool['icon']) ?> fs-4 text-primary"></i><div class="small mt-1 text-dark text-break"><?= e($tool['label']) ?></div></div>
                         </a>
                     </div>
                 <?php endforeach; ?>
@@ -638,7 +638,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                 <?php foreach ($toolGroups['after'] as $tool): ?>
                     <div class="col-6">
                         <a href="<?= url($tool['route'], ['event_id' => $event['id']]) ?>" class="text-decoration-none" title="<?= e($tool['description'] ?? '') ?>">
-                            <div class="card-evora p-3 text-center h-100"><i class="bi <?= e($tool['icon']) ?> fs-4 text-primary"></i><div class="small mt-1 text-dark"><?= e($tool['label']) ?></div></div>
+                            <div class="card-evora p-2 p-sm-3 text-center h-100"><i class="bi <?= e($tool['icon']) ?> fs-4 text-primary"></i><div class="small mt-1 text-dark text-break"><?= e($tool['label']) ?></div></div>
                         </a>
                     </div>
                 <?php endforeach; ?>

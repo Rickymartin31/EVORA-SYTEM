@@ -48,7 +48,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
 <div class="card-evora p-4">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h6 class="fw-semibold mb-0">Attendance Records</h6>
-        <select class="form-select form-select-sm w-auto" onchange="location.href=this.value">
+        <select class="form-select form-select-sm w-auto mw-100" onchange="location.href=this.value">
             <?php foreach ($assignments as $a): ?>
                 <option value="<?= url('staff-attendance', ['event_id' => $a['event_id']]) ?>" <?= $a['event_id'] == $eventId ? 'selected' : '' ?>><?= e($a['event_name']) ?></option>
             <?php endforeach; ?>

@@ -190,7 +190,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                     </td>
                     <td>
                         <?php if (!$p['certificate_id']): ?>
-                        <form method="post" action="<?= url('organizer-certificate-issue') ?>" class="d-flex gap-1">
+                        <form method="post" action="<?= url('organizer-certificate-issue') ?>" class="d-flex flex-wrap gap-1">
                             <?= Csrf::field() ?>
                             <input type="hidden" name="registration_id" value="<?= $p['registration_id'] ?>">
                             <input type="hidden" name="event_id" value="<?= $eventId ?>">
