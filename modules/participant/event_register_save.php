@@ -40,8 +40,10 @@ if (($event['payment_provider'] ?? null) === 'paypal' && !PAYPAL_ENABLED) {
     redirect('event-view', ['id' => $eventId]);
 }
 // PayPal is the active provider: a legacy (PayMongo) paid event takes no new online payments
-// (same "requires payment" rule as the registration page).
-if (($event['category_slug'] === 'fun-run' || (float) $event['fee'] > 0) && PayPalPaymentService::legacyOnlinePaymentPaused($event['payment_provider'] ?? null)) {
+// (same "requires payment" rule as the registration page: the event fee or any race category fee).
+$maxCategoryFee = $db->prepare('SELECT COALESCE(MAX(fee), 0) FROM race_categories WHERE event_id = :eid');
+$maxCategoryFee->execute(['eid' => $eventId]);
+if (((float) $event['fee'] > 0 || (float) $maxCategoryFee->fetchColumn() > 0) && PayPalPaymentService::legacyOnlinePaymentPaused($event['payment_provider'] ?? null)) {
     flash('error', PayPalPaymentService::LEGACY_PAUSED_MESSAGE);
     redirect('event-view', ['id' => $eventId]);
 }

@@ -44,7 +44,8 @@ if ($event['category_slug'] === 'fun-run') {
     }
 }
 
-$requiresPayment = $event['category_slug'] === 'fun-run' || (float) $event['fee'] > 0;
+// A fun run is paid when any of its race categories has a fee; a free fun run (all ₱0) needs no payment.
+$requiresPayment = (float) $event['fee'] > 0 || ($raceCategories && max(array_map(fn ($rc) => (float) $rc['fee'], $raceCategories)) > 0);
 // PayPal events are paid directly to the organizer through PayPal; everything else uses PayMongo.
 $isPayPalEvent = ($event['payment_provider'] ?? null) === 'paypal';
 
