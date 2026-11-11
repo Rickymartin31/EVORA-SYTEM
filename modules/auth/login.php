@@ -55,11 +55,11 @@ if (!empty($_GET['return']) && is_string($_GET['return'])): Auth::rememberNextFr
         <?php if ($next !== ''): ?><input type="hidden" name="next" value="<?= e($next) ?>"><?php endif; ?>
         <div class="form-floating mb-3">
             <input type="text" name="email" id="loginEmail" class="form-control" placeholder="Username or email" required autofocus>
-            <label for="loginEmail"><i class="bi bi-envelope me-1"></i>Username or Email</label>
+            <label for="loginEmail"><i class="bi bi-envelope me-1"></i>Username or Email<span class="req-mark" aria-hidden="true">*</span></label>
         </div>
         <div class="form-floating mb-3">
             <input type="password" name="password" id="loginPassword" class="form-control" placeholder="Password" required>
-            <label for="loginPassword"><i class="bi bi-lock me-1"></i>Password</label>
+            <label for="loginPassword"><i class="bi bi-lock me-1"></i>Password<span class="req-mark" aria-hidden="true">*</span></label>
         </div>
         <div class="text-end mb-3"><a href="<?= url('forgot-password') ?>" class="small">Forgot password?</a></div>
         <?= TurnstileService::widget() ?>

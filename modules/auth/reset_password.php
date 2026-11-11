@@ -55,11 +55,11 @@ header('Referrer-Policy: no-referrer');
             <input type="hidden" name="token" value="<?= e($token) ?>">
             <div class="form-floating mb-3">
                 <input type="password" name="new_password" id="rpNew" class="form-control" data-strength placeholder="New password" autocomplete="new-password" minlength="8" maxlength="72" required autofocus>
-                <label for="rpNew"><i class="bi bi-lock me-1"></i>New password</label>
+                <label for="rpNew"><i class="bi bi-lock me-1"></i>New password<span class="req-mark" aria-hidden="true">*</span></label>
             </div>
             <div class="form-floating mb-3">
                 <input type="password" name="confirm_password" id="rpConfirm" class="form-control" data-match="#rpNew" placeholder="Confirm new password" autocomplete="new-password" minlength="8" maxlength="72" required>
-                <label for="rpConfirm"><i class="bi bi-lock me-1"></i>Confirm new password</label>
+                <label for="rpConfirm"><i class="bi bi-lock me-1"></i>Confirm new password<span class="req-mark" aria-hidden="true">*</span></label>
             </div>
             <button type="submit" class="btn btn-evora-primary w-100">Change Password</button>
         </form>

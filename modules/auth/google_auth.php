@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?= Csrf::field() ?>
         <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" name="accept_terms" value="1" id="gTerms" required>
-            <label class="form-check-label small" for="gTerms">I have read and agree to the <a href="<?= url('user-agreement') ?>" target="_blank" rel="noopener">User Agreement</a> and the <a href="<?= url('privacy-policy') ?>" target="_blank" rel="noopener">Privacy Policy</a>, including how EVORA uses my personal information.</label>
+            <label class="form-check-label small" for="gTerms">I have read and agree to the <a href="<?= url('user-agreement') ?>" target="_blank" rel="noopener">User Agreement</a> and the <a href="<?= url('privacy-policy') ?>" target="_blank" rel="noopener">Privacy Policy</a>, including how EVORA uses my personal information.<span class="req-mark" aria-hidden="true">*</span></label>
         </div>
         <button type="submit" class="btn btn-evora-primary w-100">Create Account</button>
     </form>

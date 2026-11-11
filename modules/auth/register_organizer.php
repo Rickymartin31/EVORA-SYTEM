@@ -162,6 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <form method="post" action="<?= url('register-organizer') ?>" enctype="multipart/form-data">
+        <p class="req-note"><span class="req-mark" aria-hidden="true">*</span> Required field</p>
         <?= Csrf::field() ?>
 
         <h6 class="text-uppercase text-muted small fw-bold mb-3"><i class="bi bi-building me-1"></i>Organization Information</h6>
@@ -169,13 +170,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="col-md-6 mb-3">
                 <div class="form-floating">
                     <input type="text" name="full_name" id="orgFullName" class="form-control" placeholder="Full Name" value="<?= e(old('full_name')) ?>" required>
-                    <label for="orgFullName">Full Name *</label>
+                    <label for="orgFullName">Full Name <span class="req-mark" aria-hidden="true">*</span></label>
                 </div>
             </div>
             <div class="col-md-6 mb-3">
                 <div class="form-floating">
                     <input type="text" name="organization_name" id="orgName" class="form-control" placeholder="Organization Name" value="<?= e(old('organization_name')) ?>" required>
-                    <label for="orgName">Organization Name *</label>
+                    <label for="orgName">Organization Name <span class="req-mark" aria-hidden="true">*</span></label>
                 </div>
             </div>
         </div>
@@ -183,13 +184,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="col-md-6 mb-3">
                 <div class="form-floating">
                     <input type="text" name="contact_number" id="orgContact" class="form-control" placeholder="Contact Number" value="<?= e(old('contact_number')) ?>" required>
-                    <label for="orgContact">Contact Number *</label>
+                    <label for="orgContact">Contact Number <span class="req-mark" aria-hidden="true">*</span></label>
                 </div>
             </div>
             <div class="col-md-6 mb-3">
                 <div class="form-floating">
                     <input type="email" name="email" id="orgEmail" class="form-control" placeholder="name@example.com" value="<?= e(old('email')) ?>" required>
-                    <label for="orgEmail">Email Address *</label>
+                    <label for="orgEmail">Email Address <span class="req-mark" aria-hidden="true">*</span></label>
                 </div>
             </div>
         </div>
@@ -201,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h6 class="text-uppercase text-muted small fw-bold mb-3"><i class="bi bi-file-earmark-check me-1"></i>Verification Documents</h6>
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label class="form-label">Valid ID *</label>
+                <label class="form-label">Valid ID <span class="req-mark" aria-hidden="true">*</span></label>
                 <input type="file" name="valid_id" class="form-control" accept=".jpg,.jpeg,.png,.pdf" data-preview="#validIdPreview" required>
                 <div class="form-text">JPG, PNG, or PDF, max 5MB.</div>
                 <div id="validIdPreview"></div>
@@ -219,19 +220,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="col-md-6 mb-3">
                 <div class="form-floating">
                     <input type="password" name="password" id="orgPassword" class="form-control" data-strength placeholder="Password" required minlength="8">
-                    <label for="orgPassword">Password *</label>
+                    <label for="orgPassword">Password <span class="req-mark" aria-hidden="true">*</span></label>
                 </div>
             </div>
             <div class="col-md-6 mb-3">
                 <div class="form-floating">
                     <input type="password" name="confirm_password" id="orgConfirm" class="form-control" data-match="#orgPassword" placeholder="Confirm Password" required minlength="8">
-                    <label for="orgConfirm">Confirm Password *</label>
+                    <label for="orgConfirm">Confirm Password <span class="req-mark" aria-hidden="true">*</span></label>
                 </div>
             </div>
         </div>
         <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" name="accept_terms" value="1" id="orgTerms" required>
-            <label class="form-check-label small" for="orgTerms">I have read and agree to the <a href="<?= url('user-agreement') ?>" target="_blank" rel="noopener">User Agreement</a> and the <a href="<?= url('privacy-policy') ?>" target="_blank" rel="noopener">Privacy Policy</a>, including how EVORA uses my personal information.</label>
+            <label class="form-check-label small" for="orgTerms">I have read and agree to the <a href="<?= url('user-agreement') ?>" target="_blank" rel="noopener">User Agreement</a> and the <a href="<?= url('privacy-policy') ?>" target="_blank" rel="noopener">Privacy Policy</a>, including how EVORA uses my personal information.<span class="req-mark" aria-hidden="true">*</span></label>
         </div>
         <?= TurnstileService::widget() ?>
         <button type="submit" class="btn btn-evora-primary w-100">Submit Application</button>

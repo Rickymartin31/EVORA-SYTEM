@@ -1237,3 +1237,53 @@ document.querySelectorAll('[data-dismiss-key]').forEach(function (card) {
         }
     });
 })();
+
+// ---- required fields (v79): every required field shows a red * after its label, and a form with
+// several required fields explains it. Labels that already show * keep it, restyled the same way.
+(function () {
+    const MARK = '<span class="req-mark" aria-hidden="true">*</span>';
+    const FIELDS = 'input[required], select[required], textarea[required]';
+    function labelFor(el) {
+        if (el.id) {
+            const byFor = document.querySelector('label[for="' + CSS.escape(el.id) + '"]');
+            if (byFor) return byFor;
+        }
+        if (el.type === 'radio') {
+            const set = el.closest('fieldset');
+            return set ? set.querySelector('legend') : null;
+        }
+        const wrapping = el.closest('label');
+        if (wrapping) return wrapping;
+        const box = el.closest('.form-floating, .form-check, .mb-3, .mb-2, .input-group, [class*="col-"]');
+        return box ? box.querySelector('label, legend') : null;
+    }
+    function mark(el) {
+        if (el.type === 'hidden' || el.closest('[data-no-required-mark]')) return;
+        const label = labelFor(el);
+        if (!label) {
+            if (el.placeholder && el.placeholder.indexOf('*') === -1) el.placeholder += ' *';
+            return;
+        }
+        if (label.querySelector('.req-mark')) return;
+        const red = Array.from(label.querySelectorAll('.text-danger')).find(function (s) { return s.textContent.trim() === '*'; });
+        if (red) { red.classList.add('req-mark'); return; }
+        const last = label.lastChild;
+        if (last && last.nodeType === 3 && /\*\s*$/.test(last.nodeValue)) {
+            last.nodeValue = last.nodeValue.replace(/\s*\*\s*$/, '');
+        } else if (label.textContent.indexOf('*') !== -1) {
+            return;
+        }
+        label.insertAdjacentHTML('beforeend', ' ' + MARK);
+    }
+    function run(root) {
+        root.querySelectorAll(FIELDS).forEach(mark);
+        root.querySelectorAll('form').forEach(function (form) {
+            if (form.querySelector('.req-note') || 'noRequiredNote' in form.dataset) return;
+            const count = Array.from(form.querySelectorAll(FIELDS)).filter(function (el) { return el.type !== 'hidden' && el.type !== 'checkbox'; }).length;
+            if (count < 3 || getComputedStyle(form).display === 'flex' && !form.classList.contains('row')) return;
+            form.insertAdjacentHTML('afterbegin', '<p class="req-note' + (form.classList.contains('row') ? ' col-12' : '') + '">' + MARK + ' Required field</p>');
+        });
+    }
+    run(document);
+    window.evoraMarkRequired = run;
+})();

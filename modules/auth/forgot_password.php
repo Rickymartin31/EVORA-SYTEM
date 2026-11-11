@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?= Csrf::field() ?>
         <div class="form-floating mb-3">
             <input type="email" name="email" id="fpEmail" class="form-control" placeholder="Email address" required autofocus maxlength="150">
-            <label for="fpEmail"><i class="bi bi-envelope me-1"></i>Email address</label>
+            <label for="fpEmail"><i class="bi bi-envelope me-1"></i>Email address<span class="req-mark" aria-hidden="true">*</span></label>
         </div>
         <?= TurnstileService::widget() ?>
         <button type="submit" class="btn btn-evora-primary w-100" <?= MailService::enabled() ? '' : 'disabled' ?>>Send Reset Link</button>

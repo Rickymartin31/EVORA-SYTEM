@@ -307,7 +307,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
         <?= Csrf::field() ?>
         <input type="hidden" name="route_image_action" value="upload">
         <input type="hidden" name="event_id" value="<?= $eventId ?>">
-        <input type="file" name="route_image" class="form-control form-control-sm mw-320" accept=".jpg,.jpeg,.png" required aria-label="Route map image">
+        <input type="file" name="route_image" class="form-control form-control-sm mw-320" accept=".jpg,.jpeg,.png" required aria-label="Route map image" data-no-required-mark>
         <button type="submit" class="btn btn-sm btn-evora-primary"><i class="bi bi-upload"></i> Upload &amp; Notify Participants</button>
     </form>
     <div class="form-text">Approved participants get notified automatically when a new route picture is uploaded.</div>

@@ -2402,3 +2402,8 @@ a .stat-card:active, a.stat-card:active { transform: scale(.97) !important; filt
 .trust-list li span { color: var(--evora-text-muted); }
 .min-w-0 { min-width: 0; }
 [data-theme="dark"] .verified-badge { color: #4cb4ff; }
+
+/* ---------- v79 Required fields: red * after the label ---------- */
+.req-mark { color: var(--evora-danger); font-weight: 700; margin-left: 2px; }
+.req-note { font-size: var(--evora-fs-small); color: var(--evora-text-muted); margin-bottom: .75rem; }
+.req-note .req-mark { margin: 0 2px 0 0; }

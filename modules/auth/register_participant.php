@@ -118,14 +118,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="d-flex align-items-center gap-2 my-3 text-muted small"><hr class="flex-grow-1 m-0">or sign up with email<hr class="flex-grow-1 m-0"></div>
     <?php endif; ?>
     <form method="post" action="<?= url('register-participant') ?>">
+        <p class="req-note"><span class="req-mark" aria-hidden="true">*</span> Required field</p>
         <?= Csrf::field() ?>
         <div class="form-floating mb-3">
             <input type="text" name="full_name" id="rpName" class="form-control" placeholder="Full Name" value="<?= e(old('full_name')) ?>" required>
-            <label for="rpName"><i class="bi bi-person me-1"></i>Full Name</label>
+            <label for="rpName"><i class="bi bi-person me-1"></i>Full Name<span class="req-mark" aria-hidden="true">*</span></label>
         </div>
         <div class="form-floating mb-3">
             <input type="email" name="email" id="rpEmail" class="form-control" placeholder="name@example.com" value="<?= e(old('email')) ?>" required>
-            <label for="rpEmail"><i class="bi bi-envelope me-1"></i>Email address</label>
+            <label for="rpEmail"><i class="bi bi-envelope me-1"></i>Email address<span class="req-mark" aria-hidden="true">*</span></label>
         </div>
         <div class="form-floating mb-3">
             <input type="text" name="phone" id="rpPhone" class="form-control" placeholder="Contact Number" value="<?= e(old('phone')) ?>">
@@ -135,19 +136,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="col-sm-6 mb-3">
                 <div class="form-floating">
                     <input type="password" name="password" id="rpPassword" class="form-control" data-strength placeholder="Password" required minlength="8">
-                    <label for="rpPassword">Password</label>
+                    <label for="rpPassword">Password<span class="req-mark" aria-hidden="true">*</span></label>
                 </div>
             </div>
             <div class="col-sm-6 mb-3">
                 <div class="form-floating">
                     <input type="password" name="confirm_password" id="rpConfirm" class="form-control" data-match="#rpPassword" placeholder="Confirm Password" required minlength="8">
-                    <label for="rpConfirm">Confirm Password</label>
+                    <label for="rpConfirm">Confirm Password<span class="req-mark" aria-hidden="true">*</span></label>
                 </div>
             </div>
         </div>
         <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" name="accept_terms" value="1" id="rpTerms" required>
-            <label class="form-check-label small" for="rpTerms">I have read and agree to the <a href="<?= url('user-agreement') ?>" target="_blank" rel="noopener">User Agreement</a> and the <a href="<?= url('privacy-policy') ?>" target="_blank" rel="noopener">Privacy Policy</a>, including how EVORA uses my personal information.</label>
+            <label class="form-check-label small" for="rpTerms">I have read and agree to the <a href="<?= url('user-agreement') ?>" target="_blank" rel="noopener">User Agreement</a> and the <a href="<?= url('privacy-policy') ?>" target="_blank" rel="noopener">Privacy Policy</a>, including how EVORA uses my personal information.<span class="req-mark" aria-hidden="true">*</span></label>
         </div>
         <?= TurnstileService::widget() ?>
         <button type="submit" class="btn btn-evora-primary w-100">Create Account</button>

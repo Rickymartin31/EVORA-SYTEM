@@ -75,7 +75,7 @@ $maskedEmail = mb_substr($local, 0, 2) . str_repeat('•', max(1, mb_strlen($loc
         <div class="form-floating mb-3">
             <input type="text" name="code" id="otpCode" class="form-control text-center fs-4" style="letter-spacing:.4em" placeholder="000000"
                    inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus>
-            <label for="otpCode">6-digit code</label>
+            <label for="otpCode">6-digit code<span class="req-mark" aria-hidden="true">*</span></label>
         </div>
         <button type="submit" class="btn btn-evora-primary w-100">Verify and Log In</button>
     </form>
