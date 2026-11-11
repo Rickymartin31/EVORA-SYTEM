@@ -5,7 +5,7 @@ $db = Database::connection();
 $filter = $_GET['status'] ?? 'all';
 $allowed = ['pending', 'approved', 'rejected', 'suspended'];
 
-$sql = 'SELECT o.*, u.full_name, u.email, u.phone FROM organizers o JOIN users u ON u.id = o.user_id';
+$sql = 'SELECT o.*, u.full_name, u.email, u.phone, ' . OrganizerBadgeService::sqlVerified('o') . ' AS organizer_verified FROM organizers o JOIN users u ON u.id = o.user_id';
 $params = [];
 if (in_array($filter, $allowed, true)) {
     $sql .= ' WHERE o.status = :status';
@@ -42,7 +42,7 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
             <tbody>
             <?php foreach ($organizers as $o): ?>
                 <tr>
-                    <td><?= e($o['organization_name']) ?></td>
+                    <td><?= e($o['organization_name']) ?><?= verifiedBadge((bool) $o['organizer_verified']) ?></td>
                     <td><?= e($o['full_name']) ?></td>
                     <td><?= e($o['email']) ?></td>
                     <td><?= e($o['phone']) ?></td>

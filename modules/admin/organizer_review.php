@@ -43,6 +43,15 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                 <dt class="col-sm-4">Applied On</dt><dd class="col-sm-8"><?= date('M d, Y H:i', strtotime($organizer['created_at'])) ?></dd>
                 <dt class="col-sm-4">Events Created</dt><dd class="col-sm-8"><?= $eventCount ?></dd>
                 <dt class="col-sm-4">Current Status</dt><dd class="col-sm-8"><span class="badge badge-status-<?= e($organizer['status']) ?>"><?= ucfirst(e($organizer['status'])) ?></span></dd>
+                <?php $badgeApp = OrganizerBadgeService::latestApplication($db, (int) $organizer['id']); $badgeNow = OrganizerBadgeService::badgeState($organizer); ?>
+                <dt class="col-sm-4">Verified Badge</dt><dd class="col-sm-8">
+                    <?= match ($badgeNow) {
+                        'verified', 'expiring' => verifiedBadge(true, true) . ' until ' . date('M d, Y', strtotime($organizer['badge_expires_on'])),
+                        'expired' => 'Expired on ' . date('M d, Y', strtotime($organizer['badge_expires_on'])),
+                        'revoked' => 'Revoked',
+                        default => 'Not verified',
+                    } ?>
+                    <?php if ($badgeApp): ?> · <a href="<?= url('admin-badge-review', ['id' => $badgeApp['id']]) ?>">View badge application</a><?php endif; ?></dd>
                 <?php if ($organizer['remarks']): ?>
                 <dt class="col-sm-4">Last Remarks</dt><dd class="col-sm-8"><?= e($organizer['remarks']) ?></dd>
                 <?php endif; ?>

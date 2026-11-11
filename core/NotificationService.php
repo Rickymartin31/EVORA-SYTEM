@@ -436,6 +436,7 @@ class NotificationService
             case 'admin':
                 return match (true) {
                     $type === 'organizer_application' || $ref === 'organizer' => 'admin-organizers',
+                    $type === 'badge_application' || $ref === 'organizer_badge' => 'admin-badges',
                     $type === 'event_submitted' => 'admin-event-approvals',
                     $ref === 'user' => 'admin-users',
                     $category === 'payment' => 'admin-paypal-transactions',
@@ -445,6 +446,7 @@ class NotificationService
             case 'organizer':
                 return match (true) {
                     $type === 'new_registration' || $ref === 'registration' => 'organizer-registrations',
+                    $type === 'organizer_badge' || $ref === 'organizer_badge' => 'organizer-verified-badge',
                     $category === 'payment' => 'organizer-payment-transactions',
                     $category === 'event' => 'organizer-events',
                     default => null,
@@ -491,6 +493,8 @@ class NotificationService
             }
             $target = match ($role . ':' . $ref) {
                 'admin:organizer' => ['admin-organizer-review', ['id' => $id]],
+                'admin:organizer_badge' => ['admin-badge-review', ['id' => $id]],
+                'organizer:organizer_badge' => ['organizer-verified-badge', []],
                 'admin:event' => ($n['type'] ?? '') === 'event_submitted' ? ['admin-event-approvals', []] : ['admin-events', []],
                 'organizer:event' => ['organizer-event-manage', ['id' => $id]],
                 'organizer:registration' => ['organizer-registrations', []],

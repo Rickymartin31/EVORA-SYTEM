@@ -61,6 +61,7 @@ if ($role === 'staff') {
             <div class="nav-section-title">Platform</div>
             <?= navLink('admin-dashboard', 'bi-speedometer2', 'Dashboard', $activeRoute) ?>
             <?= navLink('admin-organizers', 'bi-person-check', 'Organizer Verification', $activeRoute, $nb('admin-organizers')) ?>
+            <?= navLink('admin-badges', 'bi-patch-check-fill', 'Verified Badges', $activeRoute, OrganizerBadgeService::pendingCount(Database::connection())) ?>
             <?= navLink('admin-event-approvals', 'bi-patch-check', 'Event Approval', $activeRoute, max($pendingEventApprovalsNav, $nb('admin-event-approvals'))) ?>
             <?= navLink('admin-events', 'bi-calendar-event', 'Event Monitoring', $activeRoute, $nb('admin-events')) ?>
             <?= navLink('admin-calendar', 'bi-calendar3', 'Event Schedule', $activeRoute) ?>
@@ -82,6 +83,7 @@ if ($role === 'staff') {
         <?php elseif ($role === 'organizer'): ?>
             <div class="nav-section-title">Overview</div>
             <?= navLink('organizer-dashboard', 'bi-speedometer2', 'Dashboard', $activeRoute) ?>
+            <?= navLink('organizer-verified-badge', 'bi-patch-check', 'Verified Badge', $activeRoute) ?>
             <div class="nav-section-title">Events</div>
             <?= navLink('organizer-events', 'bi-calendar-event', 'Manage Events', $activeRoute, $nb('organizer-events')) ?>
             <?= navLink('organizer-calendar', 'bi-calendar3', 'Event Schedule', $activeRoute) ?>

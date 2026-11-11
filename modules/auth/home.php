@@ -3,7 +3,7 @@
 // Public landing page: live upcoming events, categories, how it works, and the organizer pitch (v43).
 $db = Database::connection();
 $upcoming = $db->query(
-    "SELECT e.id, e.max_participants, e.registration_deadline, " . EVENT_CARD_COLUMNS . ", e.name, e.event_date, e.event_time, e.venue, e.banner_path, e.fee, c.name AS category_name, o.organization_name
+    "SELECT e.id, e.max_participants, e.registration_deadline, " . EVENT_CARD_COLUMNS . ", e.name, e.event_date, e.event_time, e.venue, e.banner_path, e.fee, c.name AS category_name, o.organization_name, " . OrganizerBadgeService::sqlVerified('o') . " AS organizer_verified
      FROM events e JOIN event_categories c ON c.id = e.category_id JOIN organizers o ON o.id = e.organizer_id
      WHERE e.status IN ('open', 'ongoing') AND e.event_date >= CURDATE()
      ORDER BY e.event_date, e.event_time LIMIT 6"
@@ -104,7 +104,7 @@ $settings = systemSettings();
                                 <h3 class="h6 fw-semibold"><?= e($ev['name']) ?></h3>
                                 <p class="small text-muted mb-1"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i><?= date('D, M d, Y', strtotime($ev['event_date'])) ?><?= $ev['event_time'] ? ' · ' . date('g:i A', strtotime($ev['event_time'])) : '' ?></p>
                                 <p class="small text-muted mb-1"><i class="bi bi-geo-alt me-1" aria-hidden="true"></i><?= e($ev['venue']) ?></p>
-                                <p class="small text-muted mb-1"><i class="bi bi-building me-1" aria-hidden="true"></i><?= e($ev['organization_name']) ?></p>
+                                <p class="small text-muted mb-1"><i class="bi bi-building me-1" aria-hidden="true"></i><?= e($ev['organization_name']) ?><?= verifiedBadge((bool) $ev['organizer_verified']) ?></p>
                                 <?= eventCardSlots($ev) ?: '<div class="mb-3"></div>' ?>
                                 <a href="<?= url('event-view', ['id' => $ev['id']]) ?>" class="btn btn-evora-primary btn-sm w-100 mt-auto">View Details</a>
                             </div>

@@ -75,6 +75,12 @@ if ($role === 'admin' || $publicContent) {
     $stmt->execute(['p_id' => $rel, 'p_doc' => $rel]);
     $row = $stmt->fetch();
     $authorized = $row && (int) $row['user_id'] === $userId;
+} elseif (str_starts_with($rel, 'verification/')) {
+    // Verified badge documents (v78): the admin (handled above) and the organizer who submitted them.
+    $stmt = $db->prepare('SELECT o.user_id FROM organizer_badge_documents d JOIN organizer_badge_applications a ON a.id = d.application_id
+                          JOIN organizers o ON o.id = a.organizer_id WHERE d.file_path = :p LIMIT 1');
+    $stmt->execute(['p' => $rel]);
+    $authorized = (int) $stmt->fetchColumn() === $userId;
 } elseif (str_starts_with($rel, 'payments/')) {
     $stmt = $db->prepare(
         'SELECT p.user_id AS participant_user_id, o.user_id AS organizer_user_id

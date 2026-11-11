@@ -39,6 +39,8 @@ require_once EVORA_ROOT . '/core/ParticipantToolsService.php';
 require_once EVORA_ROOT . '/core/ClaimScheduleService.php';
 require_once EVORA_ROOT . '/core/helpers.php';
 require_once EVORA_ROOT . '/core/MaintenanceService.php';
+require_once EVORA_ROOT . '/core/RefundTrackingService.php';
+require_once EVORA_ROOT . '/core/OrganizerBadgeService.php';
 
 $db = Database::connection();
 $completed = EventLifecycleService::autoCompletePastEvents($db);
@@ -52,5 +54,9 @@ $unpaidReminders = EventLifecycleService::remindUnpaid($db);
 $offers = WaitlistService::process($db);
 $sent = ParticipantToolsService::sendReminders($db);
 $claimReminders = ClaimScheduleService::sendAutomaticReminders($db); // v71: last claiming day
+$badgeReminders = OrganizerBadgeService::remindExpiring($db); // v78: Verified badge expiring / expired
+if ($badgeReminders) {
+    echo 'Verified badge reminders: ' . $badgeReminders . "\n";
+}
 echo 'Waitlist offers: ' . $offers . ', reminders: ' . $sent['event_tomorrow'] . ' event-tomorrow, ' . $sent['saved_deadline_soon'] . ' saved-deadline, ' . $claimReminders . " kit-claim last-day\n";
 echo 'Events completed: ' . count($completed) . ($completed ? ' (#' . implode(', #', $completed) . ')' : '') . ', unpaid closed after event: ' . $expired . ', unpaid reminders: ' . $unpaidReminders . "\n";

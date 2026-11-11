@@ -663,3 +663,18 @@ function renderErrorPage(int $code, string $title, string $message): never
     include EVORA_ROOT . '/modules/shared/error_page.php';
     exit;
 }
+
+/**
+ * The Verified Organizer check mark (v78). $verified comes from OrganizerBadgeService::sqlVerified()
+ * selected as a column, or from OrganizerBadgeService::isVerified().
+ */
+function verifiedBadge(bool $verified, bool $withText = false): string
+{
+    if (!$verified) {
+        return '';
+    }
+    $title = 'Verified Organizer: identity and organization documents checked by an EVORA administrator';
+
+    return ' <span class="verified-badge' . ($withText ? ' verified-badge-text' : '') . '" title="' . e($title) . '" aria-label="Verified Organizer">'
+        . '<i class="bi bi-patch-check-fill" aria-hidden="true"></i>' . ($withText ? '<span>Verified</span>' : '') . '</span>';
+}

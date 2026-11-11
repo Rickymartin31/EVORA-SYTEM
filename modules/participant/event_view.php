@@ -3,7 +3,8 @@ $db = Database::connection();
 $eventId = (int) ($_GET['id'] ?? 0);
 
 $stmt = $db->prepare(
-    "SELECT e.*, c.name AS category_name, c.slug AS category_slug, o.organization_name
+    "SELECT e.*, c.name AS category_name, c.slug AS category_slug, o.organization_name,
+            " . OrganizerBadgeService::sqlVerified('o') . " AS organizer_verified, o.badge_verified_at
      FROM events e JOIN event_categories c ON c.id = e.category_id JOIN organizers o ON o.id = e.organizer_id
      WHERE e.id = :id AND e.status != 'removed'"
 );
@@ -161,7 +162,8 @@ if ($isGuest) {
         <div class="card-evora p-4 mb-3">
             <h6 class="fw-semibold mb-3">Event Details</h6>
             <dl class="row small mb-0">
-                <dt class="col-sm-3">Organizer</dt><dd class="col-sm-9"><?= e($event['organization_name']) ?></dd>
+                <dt class="col-sm-3">Organizer</dt><dd class="col-sm-9"><?= e($event['organization_name']) ?><?= verifiedBadge((bool) $event['organizer_verified'], true) ?>
+                    <?php if ($event['organizer_verified']): ?><div class="small text-muted">Identity and organization documents checked by an EVORA administrator on <?= date('M d, Y', strtotime($event['badge_verified_at'])) ?>.</div><?php endif; ?></dd>
                 <dt class="col-sm-3">Date &amp; Time</dt><dd class="col-sm-9"><?= date('F d, Y', strtotime($event['event_date'])) ?> at <?= date('h:i A', strtotime($event['event_time'])) ?></dd>
                 <dt class="col-sm-3">Venue</dt><dd class="col-sm-9"><?= e($event['venue']) ?></dd>
                 <?php if (!empty($event['registration_deadline'])): ?>

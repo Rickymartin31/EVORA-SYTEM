@@ -4,8 +4,9 @@ $pageMeta = ['title' => 'Browse Events — EVORA', 'description' => 'Open fun ru
 
 $categoryFilter = (int) ($_GET['category'] ?? 0);
 $search = trim($_GET['q'] ?? '');
+$verifiedOnly = !empty($_GET['verified']);
 
-$sql = "SELECT e.*, c.name AS category_name, o.organization_name, " . EVENT_CARD_COLUMNS . "
+$sql = "SELECT e.*, c.name AS category_name, o.organization_name, " . OrganizerBadgeService::sqlVerified('o') . " AS organizer_verified, " . EVENT_CARD_COLUMNS . "
         FROM events e
         JOIN event_categories c ON c.id = e.category_id
         JOIN organizers o ON o.id = e.organizer_id
@@ -20,6 +21,9 @@ if ($search !== '') {
     // name, venue or organizer (separate placeholders: native prepares cannot reuse a name)
     $sql .= ' AND (e.name LIKE :q1 OR e.venue LIKE :q2 OR o.organization_name LIKE :q3)';
     $params['q1'] = $params['q2'] = $params['q3'] = '%' . $search . '%';
+}
+if ($verifiedOnly) {
+    $sql .= ' AND ' . OrganizerBadgeService::sqlVerified('o');
 }
 $sql .= ' ORDER BY e.event_date ASC';
 
@@ -55,6 +59,12 @@ if ($isGuest) {
             </select>
         </div>
         <div class="col-md-2"><button class="btn btn-evora-primary w-100" type="submit">Search</button></div>
+        <div class="col-12">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="verified" value="1" id="verifiedOnly" <?= $verifiedOnly ? 'checked' : '' ?> onchange="this.form.submit()">
+                <label class="form-check-label small" for="verifiedOnly">Verified organizers only<?= verifiedBadge(true) ?></label>
+            </div>
+        </div>
     </form>
 </div>
 
@@ -79,7 +89,7 @@ if ($isGuest) {
                     <h6 class="fw-semibold"><?= e($ev['name']) ?></h6>
                     <p class="small text-muted mb-1"><i class="bi bi-calendar3"></i> <?= date('D, M d, Y', strtotime($ev['event_date'])) ?><?= $ev['event_time'] ? ' · ' . date('g:i A', strtotime($ev['event_time'])) : '' ?></p>
                     <p class="small text-muted mb-1"><i class="bi bi-geo-alt"></i> <?= e($ev['venue']) ?></p>
-                    <p class="small text-muted mb-1"><i class="bi bi-building"></i> <?= e($ev['organization_name']) ?></p>
+                    <p class="small text-muted mb-1"><i class="bi bi-building"></i> <?= e($ev['organization_name']) ?><?= verifiedBadge((bool) $ev['organizer_verified']) ?></p>
                     <?= eventCardSlots($ev) ?: '<div class="mb-3"></div>' ?>
                     <a href="<?= url('event-view', ['id' => $ev['id']]) ?>" class="btn btn-evora-primary btn-sm w-100">View Details</a>
                 </div>

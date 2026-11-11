@@ -2386,3 +2386,19 @@ a .stat-card:active, a.stat-card:active { transform: scale(.97) !important; filt
 @media (max-width: 400px) {
   .fc .fc-col-header-cell-cushion { padding: 2px 0; font-size: .68rem; letter-spacing: 0; }
 }
+
+/* ---------- v78 Verified Organizer Badge ---------- */
+.verified-badge { display: inline-flex; align-items: center; gap: 3px; color: #1d9bf0; vertical-align: -1px; white-space: nowrap; cursor: help; }
+.verified-badge .bi { font-size: 1em; }
+.verified-badge-text > span { font-size: .75em; font-weight: 700; letter-spacing: .02em; }
+.badge-state-icon { font-size: 2.4rem; line-height: 1; flex-shrink: 0; }
+.badge-steps { padding-left: 1.1rem; }
+.badge-steps li { margin-bottom: .45rem; }
+.badge-doc-fields { border-top: 1px solid var(--evora-border); padding-top: .85rem; }
+.badge-doc-preview { display: flex; align-items: center; justify-content: center; height: 210px; border: 1px solid var(--evora-border); border-radius: 12px; overflow: hidden; background: var(--evora-bg); color: var(--evora-text-muted); text-decoration: none; }
+.badge-doc-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.trust-list li { display: flex; justify-content: space-between; gap: .75rem; padding: .4rem 0; border-bottom: 1px dashed var(--evora-border); }
+.trust-list li:last-child { border-bottom: 0; }
+.trust-list li span { color: var(--evora-text-muted); }
+.min-w-0 { min-width: 0; }
+[data-theme="dark"] .verified-badge { color: #4cb4ff; }
