@@ -130,6 +130,8 @@ $router->get('organizer-payment-dashboard', EVORA_ROOT . '/modules/organizer/pay
 $router->get('organizer-payment-transactions', EVORA_ROOT . '/modules/organizer/payment_transactions.php');
 $router->get('organizer-financial-report-export', EVORA_ROOT . '/modules/organizer/financial_report_export.php');
 $router->get('organizer-event-feedback', EVORA_ROOT . '/modules/organizer/event_feedback_view.php');
+$router->get('organizer-review-reply', EVORA_ROOT . '/modules/organizer/review_reply_save.php');
+$router->get('organizer-reviews', EVORA_ROOT . '/modules/participant/organizer_reviews.php');
 $router->get('organizer-event-analytics', EVORA_ROOT . '/modules/organizer/event_analytics.php');
 $router->get('organizer-tool-toggle', EVORA_ROOT . '/modules/organizer/tool_toggle.php');
 $router->get('organizer-venues', EVORA_ROOT . '/modules/organizer/venues_list.php');

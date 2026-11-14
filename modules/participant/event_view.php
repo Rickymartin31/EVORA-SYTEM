@@ -4,7 +4,7 @@ $eventId = (int) ($_GET['id'] ?? 0);
 
 $stmt = $db->prepare(
     "SELECT e.*, c.name AS category_name, c.slug AS category_slug, o.organization_name,
-            " . OrganizerBadgeService::sqlVerified('o') . " AS organizer_verified, o.badge_verified_at
+            " . OrganizerBadgeService::sqlVerified('o') . " AS organizer_verified, o.badge_verified_at, " . EvaluationService::ORGANIZER_RATING_COLUMNS . "
      FROM events e JOIN event_categories c ON c.id = e.category_id JOIN organizers o ON o.id = e.organizer_id
      WHERE e.id = :id AND e.status != 'removed'"
 );
@@ -162,7 +162,7 @@ if ($isGuest) {
         <div class="card-evora p-4 mb-3">
             <h6 class="fw-semibold mb-3">Event Details</h6>
             <dl class="row small mb-0">
-                <dt class="col-sm-3">Organizer</dt><dd class="col-sm-9"><?= e($event['organization_name']) ?><?= verifiedBadge((bool) $event['organizer_verified'], true) ?>
+                <dt class="col-sm-3">Organizer</dt><dd class="col-sm-9"><?= e($event['organization_name']) ?><?= verifiedBadge((bool) $event['organizer_verified'], true) ?><?= EvaluationService::ratingBadge($event['organizer_rating'], $event['organizer_reviews'], url('organizer-reviews', ['id' => $event['organizer_id']])) ?>
                     <?php if ($event['organizer_verified']): ?><div class="small text-muted">Identity and organization documents checked by an EVORA administrator on <?= date('M d, Y', strtotime($event['badge_verified_at'])) ?>.</div><?php endif; ?></dd>
                 <dt class="col-sm-3">Date &amp; Time</dt><dd class="col-sm-9"><?= date('F d, Y', strtotime($event['event_date'])) ?> at <?= date('h:i A', strtotime($event['event_time'])) ?></dd>
                 <dt class="col-sm-3">Venue</dt><dd class="col-sm-9"><?= e($event['venue']) ?></dd>
@@ -243,6 +243,43 @@ if ($isGuest) {
                 <p class="small mb-1"><?= date('h:i A', strtotime($sc['start_time'])) ?> - <?= date('h:i A', strtotime($sc['end_time'])) ?>: <?= e($sc['session_title']) ?> <?= $sc['speaker_name'] ? '(' . e($sc['speaker_name']) . ')' : '' ?></p>
             <?php endforeach; ?>
         </div>
+        <?php endif; ?>
+
+        <?php // v80: post-event reviews (completed events), like product reviews in an online shop
+        if (in_array($event['status'], EvaluationService::COMPLETED_EVENT_STATUSES, true)):
+            $stats = EvaluationService::reviewStats($db, 'event', (int) $event['id']);
+            $reviews = EvaluationService::publicReviews($db, 'event', (int) $event['id'], 30);
+            // v81: an attending participant who has not reviewed yet writes the review right here.
+            $canReviewHere = false;
+            if (Auth::check() && Auth::role() === 'participant') {
+                try {
+                    $reviewCtx = EvaluationService::eventContext($db, (int) Auth::id(), (int) $event['id']);
+                    $canReviewHere = !EvaluationService::feedbackFor($db, (int) $event['id'], (int) $reviewCtx['registration_id']);
+                } catch (DomainException $e) {
+                    $canReviewHere = false;
+                }
+            } ?>
+        <section class="card-evora p-4 mb-3" id="reviews" aria-labelledby="eventReviewsHeading">
+            <h2 class="h6 fw-semibold mb-3" id="eventReviewsHeading"><i class="bi bi-star" aria-hidden="true"></i> Participant Reviews</h2>
+            <?php if ($canReviewHere): ?>
+                <details class="review-write mb-3" <?= $stats['count'] ? '' : 'open' ?>>
+                    <summary class="btn btn-evora-primary btn-sm"><i class="bi bi-pencil-square" aria-hidden="true"></i> Write a Review</summary>
+                    <div class="pt-3">
+                        <?php $eventId = (int) $event['id']; $aspects = EvaluationService::aspectsFor($reviewCtx['category_slug']);
+                        $tags = EvaluationService::tagsFor($reviewCtx['category_slug'], (bool) $reviewCtx['paid']); $preselect = 0;
+                        $publicName = EvaluationService::publicName((string) ($_SESSION['full_name'] ?? '')); $reviewReturn = 'event';
+                        include EVORA_ROOT . '/modules/participant/partials/review_form.php'; ?>
+                    </div>
+                </details>
+            <?php endif; ?>
+            <?php if ($stats['count']): ?>
+                <?php $summaryDetailed = false; include EVORA_ROOT . '/modules/shared/partials/review_summary.php'; ?>
+                <hr>
+                <?php include EVORA_ROOT . '/modules/shared/partials/review_list.php'; ?>
+            <?php else: ?>
+                <?= emptyState('bi-star', 'No reviews yet. Participants who attended can review this event.') ?>
+            <?php endif; ?>
+        </section>
         <?php endif; ?>
     </div>
 

@@ -4,7 +4,7 @@ $db = Database::connection();
 $userId = Auth::id();
 
 $eventId = (int) ($_GET['event_id'] ?? 0);
-// Registered (approved), event completed, not cancelled — checked server-side.
+// Registered (approved), attended, event completed, not cancelled — checked server-side.
 try {
     $registration = EvaluationService::eventContext($db, $userId, $eventId);
 } catch (DomainException $e) {
@@ -12,57 +12,42 @@ try {
     redirect('my-registrations');
 }
 $existingFeedback = EvaluationService::feedbackFor($db, $eventId, (int) $registration['registration_id']);
-$isSeminar = $registration['category_slug'] === 'seminar-workshop';
+$aspects = EvaluationService::aspectsFor($registration['category_slug']);
+$tags = EvaluationService::tagsFor($registration['category_slug'], (bool) $registration['paid']);
 $preselect = (int) ($_GET['rating'] ?? 0);
+$publicName = EvaluationService::publicName((string) ($_SESSION['full_name'] ?? ''));
 
-$pageDescription = 'Tell the organizer how the event went.';
-$pageTitle = 'Event Evaluation';
+$pageDescription = 'Rate the event and help the organizer improve. Your review is shown on the event page.';
+$pageTitle = 'Event Review';
 $activeRoute = 'my-registrations';
 include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
 ?>
 <a href="<?= url('my-registrations') ?>" class="text-decoration-none small mb-3 d-inline-block"><i class="bi bi-arrow-left"></i> Back to My Registrations</a>
 <div class="card-evora p-4 mw-form-lg">
-    <h6 class="fw-semibold mb-1">Evaluate — <?= e($registration['event_name']) ?></h6>
+    <h6 class="fw-semibold mb-1">Review — <?= e($registration['event_name']) ?></h6>
     <p class="text-muted small"><?= date('M d, Y', strtotime($registration['event_date'])) ?></p>
-    <?php if ($existingFeedback): ?>
-        <p class="text-muted small mb-3">You already evaluated this event. Thank you!</p>
+    <?php if ($existingFeedback): $f = $existingFeedback; ?>
+        <p class="text-muted small mb-3">You already reviewed this event. Thank you!</p>
         <dl class="row small mb-0">
-            <dt class="col-sm-5">Your Rating</dt><dd class="col-sm-7"><span class="rating-stars fs-5"><?= EvaluationService::stars($existingFeedback['overall_rating']) ?></span> <?= (int) $existingFeedback['overall_rating'] ?>/5</dd>
-            <?php if ($existingFeedback['speaker_rating'] !== null): ?><dt class="col-sm-5">Speaker Effectiveness</dt><dd class="col-sm-7"><?= (int) $existingFeedback['speaker_rating'] ?>/5</dd><?php endif; ?>
-            <?php if ($existingFeedback['session_rating'] !== null): ?><dt class="col-sm-5">Session Relevance</dt><dd class="col-sm-7"><?= (int) $existingFeedback['session_rating'] ?>/5</dd><?php endif; ?>
-            <?php if ($existingFeedback['venue_rating'] !== null): ?><dt class="col-sm-5">Venue Quality</dt><dd class="col-sm-7"><?= (int) $existingFeedback['venue_rating'] ?>/5</dd><?php endif; ?>
-            <?php if ($existingFeedback['suggestions']): ?><dt class="col-sm-5">Comment</dt><dd class="col-sm-7"><?= nl2br(e($existingFeedback['suggestions'])) ?></dd><?php endif; ?>
+            <dt class="col-sm-5">Your rating</dt><dd class="col-sm-7"><span class="rating-stars fs-5"><?= EvaluationService::stars($f['overall_rating']) ?></span> <?= (int) $f['overall_rating'] ?>/5</dd>
+            <?php foreach (EvaluationService::aspectsFor($registration['category_slug']) as $col => $label): if ($f[$col] === null) continue; ?>
+                <dt class="col-sm-5"><?= e($label) ?></dt><dd class="col-sm-7"><?= (int) $f[$col] ?>/5</dd>
+            <?php endforeach; ?>
+            <?php if ($f['expectations_met']): ?><dt class="col-sm-5">Met your expectations</dt><dd class="col-sm-7"><?= e(EvaluationService::EXPECTATION_LABELS[$f['expectations_met']]) ?></dd><?php endif; ?>
+            <?php if ($f['join_again']): ?><dt class="col-sm-5">Would join again</dt><dd class="col-sm-7"><?= e(EvaluationService::JOIN_AGAIN_LABELS[$f['join_again']]) ?></dd><?php endif; ?>
+            <?php if ($f['liked']): ?><dt class="col-sm-5">What went well</dt><dd class="col-sm-7"><?= nl2br(e($f['liked'])) ?></dd><?php endif; ?>
+            <?php if ($f['improvement_tags']): ?><dt class="col-sm-5">To improve</dt><dd class="col-sm-7"><?php foreach (explode(',', $f['improvement_tags']) as $t): ?><span class="review-tag"><?= e(EvaluationService::IMPROVEMENT_TAGS[$t][0] ?? $t) ?></span> <?php endforeach; ?></dd><?php endif; ?>
+            <?php if ($f['suggestions']): ?><dt class="col-sm-5">Comment</dt><dd class="col-sm-7"><?= nl2br(e($f['suggestions'])) ?></dd><?php endif; ?>
         </dl>
+        <?php $myPhotos = EvaluationService::reviewPhotos($db, [(int) $f['id']])[(int) $f['id']] ?? []; if ($myPhotos): ?>
+            <div class="review-photos mt-2"><?php foreach ($myPhotos as $k => $photo): ?><a href="<?= uploadUrl($photo) ?>" target="_blank" rel="noopener"><img src="<?= uploadUrl($photo) ?>" alt="Your review photo <?= $k + 1 ?>"></a><?php endforeach; ?></div>
+        <?php endif; ?>
+        <?php if ($f['organizer_reply']): ?>
+            <div class="review-reply mt-3"><div class="small fw-semibold"><i class="bi bi-reply" aria-hidden="true"></i> Organizer's reply</div><div class="small"><?= nl2br(e($f['organizer_reply'])) ?></div></div>
+        <?php endif; ?>
+        <a href="<?= url('event-view', ['id' => $eventId]) ?>#reviews" class="btn btn-sm btn-outline-secondary mt-3">See all reviews</a>
     <?php else: ?>
-        <form method="post" action="<?= url('event-feedback-save') ?>">
-            <?= Csrf::field() ?>
-            <input type="hidden" name="event_id" value="<?= $eventId ?>">
-            <label class="form-label small mb-1">How was your experience? *</label>
-            <div class="star-rating mb-3" role="radiogroup" aria-label="Rating from 1 to 5 stars">
-                <?php for ($i = 5; $i >= 1; $i--): ?>
-                    <input type="radio" name="overall_rating" id="overall_<?= $i ?>" value="<?= $i ?>" <?= $preselect === $i ? 'checked' : '' ?> required>
-                    <label for="overall_<?= $i ?>" title="<?= $i ?> star<?= $i > 1 ? 's' : '' ?>">★</label>
-                <?php endfor; ?>
-            </div>
-            <?php if ($isSeminar): ?>
-                <?php foreach (['speaker_rating' => 'Speaker Effectiveness (optional)', 'session_rating' => 'Session Relevance (optional)', 'venue_rating' => 'Venue Quality (optional)'] as $key => $label): ?>
-                <div class="mb-3">
-                    <label class="form-label small"><?= e($label) ?></label>
-                    <div class="btn-group w-100" role="group">
-                        <?php for ($i = 1; $i <= 5; $i++): ?>
-                            <input type="radio" class="btn-check" name="<?= $key ?>" id="<?= $key ?>_<?= $i ?>" value="<?= $i ?>">
-                            <label class="btn btn-outline-primary" for="<?= $key ?>_<?= $i ?>"><?= $i ?></label>
-                        <?php endfor; ?>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-            <div class="mb-3">
-                <label class="form-label small">Comment (optional)</label>
-                <textarea name="suggestions" class="form-control" rows="3" maxlength="1000" placeholder="e.g. The event was organized well."></textarea>
-            </div>
-            <button type="submit" class="btn btn-evora-primary">Submit Evaluation</button>
-        </form>
+        <?php include __DIR__ . '/partials/review_form.php'; ?>
     <?php endif; ?>
 </div>
 <?php include EVORA_ROOT . '/modules/shared/partials/layout_bottom.php'; ?>

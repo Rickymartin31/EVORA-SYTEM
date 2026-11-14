@@ -15,59 +15,38 @@ if (!$event) {
     die('You can only view feedback for your own events.');
 }
 
-$feedback = EvaluationService::eventFeedback($db, $eventId);
-$count = count($feedback);
-$average = $count ? round(array_sum(array_column($feedback, 'overall_rating')) / $count, 1) : 0;
-$distribution = array_fill(1, 5, 0);
-foreach ($feedback as $f) {
-    $distribution[(int) $f['overall_rating']]++;
-}
+// v80: post-event evaluation results (satisfaction, effectiveness, areas to improve) and replies.
+$stats = EvaluationService::reviewStats($db, 'event', $eventId);
+$reviews = EvaluationService::publicReviews($db, 'event', $eventId, 200);
+$attendees = $db->prepare('SELECT COUNT(*) FROM registrations r WHERE r.event_id = :e AND r.status = "approved" AND ' . EvaluationService::ATTENDED_SQL);
+$attendees->execute(['e' => $eventId]);
+$attendees = (int) $attendees->fetchColumn();
 
-$pageDescription = 'What participants said about this event.';
-$pageTitle = 'Event Feedback';
+$pageDescription = 'Post-event evaluation: how participants rated this event and what to improve. Reviews and your replies are public on the event page.';
+$pageTitle = 'Event Evaluation';
 $activeRoute = 'organizer-dashboard';
+$pageActions = '<a href="' . url('event-view', ['id' => $eventId]) . '#reviews" class="btn btn-sm btn-outline-secondary"><i class="bi bi-globe2" aria-hidden="true"></i> See public reviews</a>';
 include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
 ?>
-<?php renderBreadcrumb([['label' => 'Dashboard', 'route' => 'organizer-dashboard'], ['label' => 'Feedback — ' . $event['name']]]); ?>
+<?php renderBreadcrumb([['label' => 'Dashboard', 'route' => 'organizer-dashboard'], ['label' => 'Evaluation — ' . $event['name']]]); ?>
 
-<div class="row g-3 mb-3">
-    <div class="col-md-4">
-        <div class="stat-card"><div class="stat-value"><span class="rating-stars"><?= EvaluationService::stars($average) ?></span> <?= $count ? $average : '—' ?></div><div class="stat-label">Average Rating</div></div>
+<section class="card-evora p-4 mb-3" aria-labelledby="evalSummaryHeading">
+    <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+        <h2 class="h6 fw-semibold mb-0" id="evalSummaryHeading"><?= e($event['name']) ?> <span class="text-muted fw-normal small">· <?= date('M d, Y', strtotime($event['event_date'])) ?></span></h2>
+        <span class="small text-muted">Response rate: <b><?= $stats['count'] ?></b> of <b><?= $attendees ?></b> attendees<?= $attendees ? ' (' . round(100 * min($stats['count'], $attendees) / $attendees) . '%)' : '' ?></span>
     </div>
-    <div class="col-md-4">
-        <div class="stat-card"><div class="stat-value"><?= $count ?></div><div class="stat-label">Total Reviews</div></div>
-    </div>
-    <div class="col-md-4">
-        <div class="card-evora p-3 h-100 small">
-            <?php for ($i = 5; $i >= 1; $i--): $pct = $count ? round(100 * $distribution[$i] / $count) : 0; ?>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="text-nowrap" style="width:2.5rem;"><?= $i ?> ★</span>
-                    <div class="progress flex-grow-1" style="height:6px;"><div class="progress-bar bg-warning" style="width:<?= $pct ?>%"></div></div>
-                    <span class="text-muted" style="width:2rem;"><?= $distribution[$i] ?></span>
-                </div>
-            <?php endfor; ?>
-        </div>
-    </div>
-</div>
-
-<div class="card-evora p-4">
-    <h6 class="fw-semibold mb-1"><?= e($event['name']) ?></h6>
-    <p class="small text-muted"><?= date('M d, Y', strtotime($event['event_date'])) ?> · Ratings are submitted by participants and cannot be changed.</p>
-    <?php if (!$feedback): ?>
-        <?= emptyState('bi-star', in_array($event['status'], EvaluationService::COMPLETED_EVENT_STATUSES, true) ? 'No feedback yet.' : 'Participants can rate this event once it is marked completed.') ?>
+    <?php if ($stats['count']): ?>
+        <?php include EVORA_ROOT . '/modules/shared/partials/review_summary.php'; ?>
     <?php else: ?>
-    <ul class="list-unstyled mb-0">
-        <?php foreach ($feedback as $f): ?>
-            <li class="border-bottom py-3">
-                <div class="d-flex justify-content-between">
-                    <strong class="small"><?= e($f['participant_name']) ?></strong>
-                    <span class="text-muted small"><?= date('M d, Y', strtotime($f['created_at'])) ?></span>
-                </div>
-                <div class="rating-stars"><?= EvaluationService::stars($f['overall_rating']) ?> <span class="text-muted small"><?= (int) $f['overall_rating'] ?>/5</span></div>
-                <?php if ($f['suggestions']): ?><p class="small mb-0 mt-1"><?= nl2br(e($f['suggestions'])) ?></p><?php endif; ?>
-            </li>
-        <?php endforeach; ?>
-    </ul>
+        <?= emptyState('bi-star', in_array($event['status'], EvaluationService::COMPLETED_EVENT_STATUSES, true) ? 'No reviews yet. Participants who attended are asked to review the event.' : 'Participants who attended can review this event once it is marked completed.') ?>
     <?php endif; ?>
-</div>
+</section>
+
+<?php if ($reviews): ?>
+<section class="card-evora p-4" aria-labelledby="reviewsHeading">
+    <h2 class="h6 fw-semibold mb-1" id="reviewsHeading">Reviews (<?= count($reviews) ?>)</h2>
+    <p class="small text-muted">Participants' answers cannot be changed. Your reply is shown under the review on the public event page, and the participant is notified.</p>
+    <?php $reviewFullNames = true; $reviewReplyForms = true; include EVORA_ROOT . '/modules/shared/partials/review_list.php'; ?>
+</section>
+<?php endif; ?>
 <?php include EVORA_ROOT . '/modules/shared/partials/layout_bottom.php'; ?>

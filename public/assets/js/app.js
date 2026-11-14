@@ -1244,13 +1244,18 @@ document.querySelectorAll('[data-dismiss-key]').forEach(function (card) {
     const MARK = '<span class="req-mark" aria-hidden="true">*</span>';
     const FIELDS = 'input[required], select[required], textarea[required]';
     function labelFor(el) {
+        // A radio group is marked once, on its question (legend, or the label just before the group),
+        // never on each option such as a star or "Yes".
+        if (el.type === 'radio') {
+            const set = el.closest('fieldset');
+            if (set) return set.querySelector('legend');
+            const group = el.closest('[role="radiogroup"], .btn-group');
+            const prev = group ? group.previousElementSibling : null;
+            return prev && prev.tagName === 'LABEL' ? prev : null;
+        }
         if (el.id) {
             const byFor = document.querySelector('label[for="' + CSS.escape(el.id) + '"]');
             if (byFor) return byFor;
-        }
-        if (el.type === 'radio') {
-            const set = el.closest('fieldset');
-            return set ? set.querySelector('legend') : null;
         }
         const wrapping = el.closest('label');
         if (wrapping) return wrapping;
@@ -1261,7 +1266,7 @@ document.querySelectorAll('[data-dismiss-key]').forEach(function (card) {
         if (el.type === 'hidden' || el.closest('[data-no-required-mark]')) return;
         const label = labelFor(el);
         if (!label) {
-            if (el.placeholder && el.placeholder.indexOf('*') === -1) el.placeholder += ' *';
+            if (el.type !== 'radio' && el.placeholder && el.placeholder.indexOf('*') === -1) el.placeholder += ' *';
             return;
         }
         if (label.querySelector('.req-mark')) return;
@@ -1286,4 +1291,29 @@ document.querySelectorAll('[data-dismiss-key]').forEach(function (card) {
     }
     run(document);
     window.evoraMarkRequired = run;
+})();
+
+// ---- review photos (v81): preview the chosen photos and keep at most data-max-files
+(function () {
+    document.querySelectorAll('input[type="file"][data-max-files]').forEach(function (input) {
+        const max = parseInt(input.dataset.maxFiles, 10) || 3;
+        const box = document.getElementById('reviewPhotoPreview');
+        input.addEventListener('change', function () {
+            if (input.files.length > max) {
+                const keep = new DataTransfer();
+                Array.from(input.files).slice(0, max).forEach(function (f) { keep.items.add(f); });
+                input.files = keep.files;
+                alert('You can add up to ' + max + ' photos. Only the first ' + max + ' were kept.');
+            }
+            if (!box) return;
+            box.innerHTML = '';
+            Array.from(input.files).forEach(function (f) {
+                if (!/^image\//.test(f.type)) return;
+                const img = document.createElement('img');
+                img.alt = f.name;
+                img.src = URL.createObjectURL(f);
+                box.appendChild(img);
+            });
+        });
+    });
 })();

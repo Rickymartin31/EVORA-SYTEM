@@ -23,12 +23,14 @@ $rel = str_replace(['..', "\0"], '', $rel);
 // system logo). Every other upload still requires a login and the checks below.
 const PUBLIC_EVENT_STATUSES = ['approved', 'open', 'closed', 'ongoing', 'completed'];
 $publicContent = false;
-if ($rel !== '' && preg_match('#^(banners|speakers|logo)/[a-z0-9_.-]+$#i', $rel)) {
+if ($rel !== '' && preg_match('#^(banners|speakers|logo|reviews)/[a-z0-9_.-]+$#i', $rel)) {
     $statuses = "'" . implode("','", PUBLIC_EVENT_STATUSES) . "'";
     $publicStmt = Database::connection()->prepare(match (strtok($rel, '/')) {
         'banners' => "SELECT 1 FROM events WHERE banner_path = :p AND status IN ($statuses)",
         'speakers' => "SELECT 1 FROM event_speakers sp JOIN events e ON e.id = sp.event_id WHERE sp.photo_path = :p AND e.status IN ($statuses)",
         'logo' => 'SELECT 1 FROM system_settings WHERE logo_path = :p',
+        // v81: photos attached to a public post-event review
+        'reviews' => "SELECT 1 FROM event_feedback_photos ph JOIN event_feedback f ON f.id = ph.feedback_id JOIN events e ON e.id = f.event_id WHERE ph.photo_path = :p AND e.status IN ($statuses, 'archived')",
     });
     $publicStmt->execute(['p' => $rel]);
     $publicContent = (bool) $publicStmt->fetchColumn();

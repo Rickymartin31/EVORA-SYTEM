@@ -2407,3 +2407,32 @@ a .stat-card:active, a.stat-card:active { transform: scale(.97) !important; filt
 .req-mark { color: var(--evora-danger); font-weight: 700; margin-left: 2px; }
 .req-note { font-size: var(--evora-fs-small); color: var(--evora-text-muted); margin-bottom: .75rem; }
 .req-note .req-mark { margin: 0 2px 0 0; }
+
+/* ---------- v80 Post-event evaluation and public reviews ---------- */
+.review-average { font-size: 2.6rem; font-weight: 800; line-height: 1; color: var(--evora-heading); }
+.review-bar { height: 6px; }
+.review-bar-label { width: 2.5rem; }
+.review-bar-count { width: 2rem; text-align: right; }
+.review-kpi { border: 1px solid var(--evora-border); border-radius: 12px; padding: .55rem .4rem; height: 100%; }
+.review-kpi b { display: block; font-size: 1.2rem; color: var(--evora-heading); }
+.review-kpi span { color: var(--evora-text-muted); font-size: .75rem; }
+.review-item { border-bottom: 1px solid var(--evora-border); padding: .9rem 0; }
+.review-item:last-child { border-bottom: 0; }
+.review-tag { display: inline-block; font-size: .72rem; padding: .12rem .55rem; border-radius: 999px; background: var(--evora-warning-bg); color: var(--evora-warning-text); margin: 0 .2rem .25rem 0; }
+.review-reply { border-left: 3px solid var(--evora-primary); background: var(--evora-primary-soft); border-radius: 0 10px 10px 0; padding: .5rem .75rem; }
+.aspect-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; padding: .35rem 0; border-bottom: 1px dashed var(--evora-border); }
+.organizer-rating { color: #b45309; font-size: .85em; white-space: nowrap; text-decoration: none; margin-left: .25rem; }
+a.organizer-rating:hover { text-decoration: underline; }
+[data-theme="dark"] .organizer-rating { color: #fbbf24; }
+[data-theme="dark"] .review-reply { background: rgba(99, 102, 241, .12); }
+.browse-tabs .nav-link { border-radius: 999px; font-weight: 600; font-size: .9rem; }
+.browse-tabs .nav-link:not(.active) { color: var(--evora-text-muted); }
+
+/* ---------- v81 Review photos and "Write a Review" on the event page ---------- */
+.review-photos { display: flex; flex-wrap: wrap; gap: .5rem; }
+.review-photos img { width: 96px; height: 96px; object-fit: cover; border-radius: 10px; border: 1px solid var(--evora-border); }
+.review-photo-preview { display: flex; flex-wrap: wrap; gap: .5rem; }
+.review-photo-preview img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid var(--evora-border); }
+.review-write > summary { list-style: none; display: inline-flex; align-items: center; gap: .35rem; }
+.review-write > summary::-webkit-details-marker { display: none; }
+.review-write[open] > summary { opacity: .75; }

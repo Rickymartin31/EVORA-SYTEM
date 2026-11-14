@@ -16,7 +16,7 @@ if ($participant) {
 $stmt = $db->prepare(
     'SELECT r.*, e.name AS event_name, e.event_date, COALESCE(rc.fee, e.fee) AS fee, e.id AS event_id,
         c.slug AS category_slug, e.status AS event_status, pay.status AS payment_status, pay.payment_channel, q.id AS qr_id, q.invalidated_at AS qr_invalidated_at,
-        f.id AS feedback_id
+        f.id AS feedback_id, ' . EvaluationService::ATTENDED_SQL . ' AS attended
      FROM registrations r
      JOIN events e ON e.id = r.event_id
      JOIN event_categories c ON c.id = e.category_id
@@ -146,8 +146,8 @@ include EVORA_ROOT . '/modules/shared/partials/layout_top.php';
                             <?php if ($r['qr_id'] && !$r['qr_invalidated_at']): ?><a href="<?= url('my-qr') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-qr-code" aria-hidden="true"></i> My QR</a>
                                 <?php if ($r['status'] === 'approved'): ?><a href="<?= url('my-ticket', ['registration_id' => $r['id']]) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-ticket-perforated" aria-hidden="true"></i> E-ticket</a><?php endif; ?><?php endif; ?>
                             <?php if (in_array($r['status'], ['pending', 'approved'], true) && $r['event_date'] >= date('Y-m-d')): ?><a href="<?= url('event-ics', ['id' => $r['event_id']]) ?>" class="btn btn-sm btn-outline-secondary" title="Add to calendar (.ics)"><i class="bi bi-calendar-plus" aria-hidden="true"></i><span class="visually-hidden">Add to calendar</span></a><?php endif; ?>
-                            <?php if ($r['status'] === 'approved' && in_array($r['event_status'], EvaluationService::COMPLETED_EVENT_STATUSES, true)): ?>
-                                <a href="<?= url('event-feedback', ['event_id' => $r['event_id']]) ?>" class="btn btn-sm btn-outline-<?= $r['feedback_id'] ? 'secondary' : 'success' ?>"><?= $r['feedback_id'] ? 'Feedback Sent' : 'Rate Event' ?></a>
+                            <?php if ($r['status'] === 'approved' && in_array($r['event_status'], EvaluationService::COMPLETED_EVENT_STATUSES, true) && ($r['attended'] || $r['feedback_id'])): ?>
+                                <a href="<?= url('event-feedback', ['event_id' => $r['event_id']]) ?>" class="btn btn-sm btn-outline-<?= $r['feedback_id'] ? 'secondary' : 'success' ?>"><?= $r['feedback_id'] ? 'Review Sent' : '<i class="bi bi-star" aria-hidden="true"></i> Rate Event' ?></a>
                             <?php endif; ?>
                             <a href="<?= url('event-view', ['id' => $r['event_id']]) ?>" class="btn btn-sm btn-outline-secondary">View Event</a>
                         </div>
